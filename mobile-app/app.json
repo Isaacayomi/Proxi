@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Proxi",
+    "slug": "proxi",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-secure-store"
+    ],
+    "android": {
+      "package": "com.proxi.attendance"
+    },
+    "ios": {
+      "bundleIdentifier": "com.proxi.attendance",
+      "supportsTablet": false
+    }
+  }
+}
