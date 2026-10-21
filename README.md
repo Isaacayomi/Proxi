@@ -73,15 +73,15 @@ The authentication API handles account verification and profiles. The ESP32 hand
 
 Install pnpm if needed:
 
-```sh
+```
 npm install --global pnpm@9.6.0
 ```
 
-Run the following commands from your local project folder.
+Each command block below starts from the project root. The `cd` command opens the relevant component folder; skip it if your terminal is already in that folder.
 
 ### 1. Set up the auth server
 
-```sh
+```
 cd auth-server
 pnpm install
 # Create local configuration only if it does not already exist.
@@ -99,7 +99,8 @@ The default Resend test sender delivers only to the email registered with your R
 
 Initialize the local database and start the API:
 
-```sh
+```
+cd auth-server
 npm run db:migrate
 npm run dev -- --local --ip 0.0.0.0
 ```
@@ -112,7 +113,7 @@ Open `http://localhost:8787/` to check that the API is running. Leave this termi
 
 In a separate terminal, starting from the project root:
 
-```sh
+```
 cd mobile-app
 npm ci
 # Create local configuration only if it does not already exist.
@@ -129,7 +130,8 @@ Replace `YOUR_COMPUTER_LAN_IP` with your computer's local network address, such 
 
 Start Expo:
 
-```sh
+```
+cd mobile-app
 npm start -- --clear
 ```
 
@@ -141,7 +143,7 @@ Press **Ctrl+C** in either terminal to stop its server.
 
 Install the PlatformIO extension in VS Code or use PlatformIO Core. Connect the ESP32 to your computer with a USB data cable, then run these commands from the project root:
 
-```sh
+```
 cd esp32
 # Build the firmware and resolve the libraries in platformio.ini.
 pio run -e esp32dev
@@ -155,16 +157,18 @@ The project uses the Arduino framework, NimBLE-Arduino, and ArduinoJson. Its Blu
 
 ### 4. Run the checks
 
-From `auth-server/`:
+Auth server checks:
 
-```sh
+```
+cd auth-server
 npm run typecheck
 npm test
 ```
 
-From `mobile-app/`:
+Mobile app checks:
 
-```sh
+```
+cd mobile-app
 npm run typecheck
 npm run lint
 npm test -- --runInBand
