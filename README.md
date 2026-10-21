@@ -61,22 +61,128 @@ The authentication API handles account verification and profiles. The ESP32 hand
 └── docs/           # Deployment and release documentation
 ```
 
-## Getting started
+## Project setup
 
-Use Node.js 24 LTS, npm for the mobile app, and pnpm for the auth server. PlatformIO provides the ESP32 build and upload tools.
+### Prerequisites
 
-Follow the component guides for configuration and development commands:
+- Node.js **24 LTS** and npm.
+- pnpm **9.6.0** for the auth server.
+- Expo Go compatible with **SDK 57** for mobile development.
+- A Resend account and API key for OTP email delivery.
+- PlatformIO, an ESP32 compatible with the `esp32dev` target, and a USB data cable for firmware development.
+
+Install pnpm if needed:
+
+```sh
+npm install --global pnpm@9.6.0
+```
+
+Run the following commands from your local project folder.
+
+### 1. Set up the auth server
+
+```sh
+cd auth-server
+pnpm install
+# Create local configuration only if it does not already exist.
+test -f .dev.vars || cp .dev.vars.example .dev.vars
+```
+
+Open `auth-server/.dev.vars` and set:
+
+```env
+RESEND_API_KEY=re_your_actual_resend_key
+RESEND_FROM_EMAIL=onboarding@resend.dev
+```
+
+The default Resend test sender delivers only to the email registered with your Resend account. To send to other users, configure a sender address on a domain verified in Resend.
+
+Initialize the local database and start the API:
+
+```sh
+npm run db:migrate
+npm run dev -- --local --ip 0.0.0.0
+```
+
+For an existing database, review pending migrations before applying them. The migration command uses the local D1 database configured in `auth-server/wrangler.toml`.
+
+Open `http://localhost:8787/` to check that the API is running. Leave this terminal open while using the app.
+
+### 2. Set up the mobile app
+
+In a separate terminal, starting from the project root:
+
+```sh
+cd mobile-app
+npm ci
+# Create local configuration only if it does not already exist.
+test -f .env.local || cp .env.example .env.local
+```
+
+Set the API address in `mobile-app/.env.local`:
+
+```env
+EXPO_PUBLIC_API_URL=http://YOUR_COMPUTER_LAN_IP:8787
+```
+
+Replace `YOUR_COMPUTER_LAN_IP` with your computer's local network address, such as `192.168.1.10`. On a physical phone, `localhost` refers to the phone, so use the computer's address. Connect the phone and computer to the same network and allow access to port **8787** through the computer's firewall.
+
+Start Expo:
+
+```sh
+npm start -- --clear
+```
+
+Scan the QR code with a compatible Expo Go app. Restart Expo after changing `.env.local`. For Bluetooth hardware testing, use a custom Expo development build.
+
+Press **Ctrl+C** in either terminal to stop its server.
+
+### 3. Set up the ESP32 firmware
+
+Install the PlatformIO extension in VS Code or use PlatformIO Core. Connect the ESP32 to your computer with a USB data cable, then run these commands from the project root:
+
+```sh
+cd esp32
+# Build the firmware and resolve the libraries in platformio.ini.
+pio run -e esp32dev
+# Upload to the connected board.
+pio run -e esp32dev --target upload
+# View device logs.
+pio device monitor --baud 115200
+```
+
+The project uses the Arduino framework, NimBLE-Arduino, and ArduinoJson. Its Bluetooth advertising name is `ESP32-Attendance`. PlatformIO's Build, Upload, and Serial Monitor actions provide the same workflow inside VS Code.
+
+### 4. Run the checks
+
+From `auth-server/`:
+
+```sh
+npm run typecheck
+npm test
+```
+
+From `mobile-app/`:
+
+```sh
+npm run typecheck
+npm run lint
+npm test -- --runInBand
+npx expo install --check
+```
+
+## Configuration and deployment
+
+The mobile app uses `EXPO_PUBLIC_API_URL` to reach the authentication API. The backend uses `RESEND_API_KEY` and `RESEND_FROM_EMAIL` for email delivery, plus its Cloudflare D1 database binding.
+
+Keep actual credentials in local environment files or the hosting platform's secret storage. Email API keys belong in the backend; `EXPO_PUBLIC_*` values are included in the mobile app.
+
+See the component guides for additional details:
 
 - [Mobile app setup](mobile-app/README.md)
 - [Auth server setup and API](auth-server/README.md)
 - [ESP32 configuration](esp32/platformio.ini)
 - [Deployment and release guide](docs/DEPLOYMENT.md)
-
-## Configuration
-
-The mobile app uses `EXPO_PUBLIC_API_URL` to reach the authentication API. The backend uses `RESEND_API_KEY` and `RESEND_FROM_EMAIL` for email delivery, plus its Cloudflare D1 database binding.
-
-Example environment files are included in each application folder. Keep actual credentials in local environment files or the hosting platform’s secret storage.
 
 ## Project identity
 
