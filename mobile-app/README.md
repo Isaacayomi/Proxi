@@ -38,3 +38,4 @@ The backend now issues authenticated sessions and stores the profile. Session to
 The backend assigns the role using the retained email-domain rule. The old local `userId`/name keys do not grant access to the app.
 
 `eas.json` defines an internal Android APK and a production app-store build. Set `EXPO_PUBLIC_API_URL` in the matching EAS environment before building. The release check rejects a missing or local HTTP API URL. Developer preview buttons are hidden in release builds. See [deployment instructions](../docs/DEPLOYMENT.md).
+# Proxi
