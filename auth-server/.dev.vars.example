@@ -1,0 +1,3 @@
+RESEND_API_KEY=re_replace_with_your_resend_api_key
+# This test sender can only send to the email registered with your Resend account.
+RESEND_FROM_EMAIL=onboarding@resend.dev
