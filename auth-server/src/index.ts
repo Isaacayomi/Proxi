@@ -358,3 +358,139 @@ app.onError((error, c) => {
 	);
 });
 export default app;
+
+
+const requireAuth = async (c: any) => {
+	const token = c.req.header("Authorization")?.match(/^Bearer (.+)$/)?.[1];
+	if (!token || token.length > 200) return null;
+	const tokenHash = await hash(token);
+	const user = await c.env.DB.prepare(
+		"SELECT u.* FROM users u JOIN auth_sessions s ON s.user_id=u.id WHERE s.token_hash=? AND s.expires_at>?",
+	)
+		.bind(tokenHash, Date.now())
+		.first<User>();
+	if (!user) return null;
+	c.set("user", user);
+	c.set("tokenHash", tokenHash);
+	return { user, tokenHash };
+};
+
+
+
+app.post("/api/attendance/sessions", async (c) => {
+	const auth = await requireAuth(c);
+	if (!auth?.user) return c.json({ success: false, message: "Unauthorized" }, 401);
+	if (auth.user.role !== "lecturer") return c.json({ success: false, message: "Only lecturers can create sessions" }, 403);
+	const body = await c.req.json().catch(() => null);
+	const courseCode = typeof body?.courseCode === "string" ? body.courseCode.trim() : "";
+	const courseName = typeof body?.courseName === "string" ? body.courseName.trim() : "";
+	const durationMinutes = typeof body?.durationMinutes === "number" ? body.durationMinutes : 60;
+	if (!courseCode || !courseName) return c.json({ success: false, message: "Course code and name are required" }, 400);
+	const now = Date.now();
+	const endsAt = now + Math.max(5, Math.min(180, durationMinutes)) * 60000;
+	const sessionToken = crypto.randomUUID() + crypto.randomUUID();
+	const sessionId = crypto.randomUUID();
+	await c.env.DB.prepare(
+		"INSERT INTO attendance_sessions(id,lecturer_id,course_code,course_name,session_token_hash,starts_at,ends_at,status) VALUES(?,?,?,?,?,?,?,?)",
+	)
+		.bind(sessionId, auth.user.id, courseCode, courseName, await hash(sessionToken), now, endsAt, "active")
+		.run();
+	return c.json({ success: true, data: { sessionId, sessionToken, courseCode, courseName, startsAt: now, endsAt } });
+});
+
+app.post("/api/attendance/sessions/validate", async (c) => {
+	const auth = await requireAuth(c);
+	if (!auth?.user) return c.json({ success: false, message: "Unauthorized" }, 401);
+	const body = await c.req.json().catch(() => null);
+	const sessionId = typeof body?.sessionId === "string" ? body.sessionId : "";
+	const sessionToken = typeof body?.sessionToken === "string" ? body.sessionToken : "";
+	if (!sessionId || !sessionToken) return c.json({ success: false, message: "sessionId and sessionToken are required" }, 400);
+	const row = await c.env.DB.prepare(
+		"SELECT id,lecturer_id,course_code,course_name,starts_at,ends_at,status,session_token_hash FROM attendance_sessions WHERE id=?",
+	)
+		.bind(sessionId)
+		.first<any>();
+	if (!row) return c.json({ success: false, message: "Session not found" }, 404);
+	if (row.status !== "active") return c.json({ success: false, message: "Session is not active" }, 400);
+	if (Date.now() > row.ends_at) {
+		await c.env.DB.prepare("UPDATE attendance_sessions SET status='expired' WHERE id=?").bind(sessionId).run();
+		return c.json({ success: false, message: "Session expired" }, 400);
+	}
+	if ((await hash(sessionToken)) !== row.session_token_hash) return c.json({ success: false, message: "Invalid session token" }, 401);
+	return c.json({ success: true, data: { sessionId: row.id, courseCode: row.course_code, courseName: row.course_name, endsAt: row.ends_at } });
+});
+
+app.post("/api/attendance/submit", async (c) => {
+	const auth = await requireAuth(c);
+	if (!auth?.user) return c.json({ success: false, message: "Unauthorized" }, 401);
+	if (auth.user.role !== "student") return c.json({ success: false, message: "Only students can check in" }, 403);
+	const body = await c.req.json().catch(() => null);
+	const sessionId = typeof body?.sessionId === "string" ? body.sessionId : "";
+	const sessionToken = typeof body?.sessionToken === "string" ? body.sessionToken : "";
+	const nonce = typeof body?.nonce === "string" ? body.nonce : crypto.randomUUID();
+	if (!sessionId || !sessionToken) return c.json({ success: false, message: "sessionId and sessionToken are required" }, 400);
+	const row = await c.env.DB.prepare(
+		"SELECT id,course_code,course_name,starts_at,ends_at,status,session_token_hash FROM attendance_sessions WHERE id=?",
+	)
+		.bind(sessionId)
+		.first<any>();
+	if (!row) return c.json({ success: false, message: "Session not found" }, 404);
+	if (row.status !== "active") return c.json({ success: false, message: "Session is not active" }, 400);
+	if (Date.now() > row.ends_at) {
+		await c.env.DB.prepare("UPDATE attendance_sessions SET status='expired' WHERE id=?").bind(sessionId).run();
+		return c.json({ success: false, message: "Session expired" }, 400);
+	}
+	if ((await hash(sessionToken)) !== row.session_token_hash) return c.json({ success: false, message: "Invalid session token" }, 401);
+	try {
+		await c.env.DB.prepare(
+			"INSERT INTO attendance_records(session_id,student_id,matric_number,client_nonce_hash) VALUES(?,?,?,?)",
+		)
+			.bind(sessionId, auth.user.id, auth.user.matric_number, await hash(nonce))
+			.run();
+	} catch (e: any) {
+		if (String(e?.message || e).includes("UNIQUE")) {
+			return c.json({ success: false, message: "You have already checked in for this session" }, 409);
+		}
+		throw e;
+	}
+	return c.json({ success: true, message: "Attendance recorded", data: { sessionId, courseCode: row.course_code, courseName: row.course_name } });
+});
+
+app.get("/api/attendance/sessions/lecturer", async (c) => {
+	const auth = await requireAuth(c);
+	if (!auth?.user) return c.json({ success: false, message: "Unauthorized" }, 401);
+	if (auth.user.role !== "lecturer") return c.json({ success: false, message: "Only lecturers can view sessions" }, 403);
+	const rows = await c.env.DB.prepare(
+		"SELECT s.id,s.course_code,s.course_name,s.starts_at,s.ends_at,s.status,COUNT(r.id) as record_count FROM attendance_sessions s LEFT JOIN attendance_records r ON r.session_id=s.id WHERE s.lecturer_id=? GROUP BY s.id ORDER BY s.created_at DESC",
+	)
+		.bind(auth.user.id)
+		.all();
+	return c.json({ success: true, data: rows.results || [] });
+});
+
+app.get("/api/attendance/records", async (c) => {
+	const auth = await requireAuth(c);
+	if (!auth?.user) return c.json({ success: false, message: "Unauthorized" }, 401);
+	if (auth.user.role === "student") {
+		const rows = await c.env.DB.prepare(
+			"SELECT r.id,r.session_id,r.submitted_at,s.course_code,s.course_name,s.ends_at FROM attendance_records r JOIN attendance_sessions s ON s.id=r.session_id WHERE r.student_id=? ORDER BY r.submitted_at DESC",
+		)
+			.bind(auth.user.id)
+			.all();
+		return c.json({ success: true, data: rows.results || [] });
+	} else if (auth.user.role === "lecturer") {
+		const sessionId = c.req.query("sessionId");
+		if (!sessionId) return c.json({ success: false, message: "sessionId required" }, 400);
+		const session = await c.env.DB.prepare("SELECT id,lecturer_id FROM attendance_sessions WHERE id=?")
+			.bind(sessionId)
+			.first<any>();
+		if (!session || session.lecturer_id !== auth.user.id) return c.json({ success: false, message: "Forbidden" }, 403);
+		const rows = await c.env.DB.prepare(
+			"SELECT r.id,r.student_id,r.matric_number,r.submitted_at,u.first_name,u.last_name,u.email FROM attendance_records r JOIN users u ON u.id=r.student_id WHERE r.session_id=? ORDER BY r.submitted_at ASC",
+		)
+			.bind(sessionId)
+			.all();
+		return c.json({ success: true, data: rows.results || [] });
+	}
+	return c.json({ success: false, message: "Forbidden" }, 403);
+});

@@ -19,3 +19,36 @@ export const users = sqliteTable("users", {
 		.default("student"),
 	lastLogin: integer("last_login", { mode: "timestamp" }),
 });
+
+export const attendanceSessions = sqliteTable("attendance_sessions", {
+	id: text("id").primaryKey().$default(() => newId("attsession")),
+	lecturerId: text("lecturer_id")
+		.notNull()
+		.references(() => users.id),
+	courseCode: text("course_code").notNull(),
+	courseName: text("course_name").notNull(),
+	sessionTokenHash: text("session_token_hash").notNull(),
+	startsAt: integer("starts_at", { mode: "timestamp" }).notNull(),
+	endsAt: integer("ends_at", { mode: "timestamp" }).notNull(),
+	status: text("status", { enum: ["active", "ended", "expired"] })
+		.notNull()
+		.default("active"),
+	createdAt: integer("created_at", { mode: "timestamp" })
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const attendanceRecords = sqliteTable("attendance_records", {
+	id: text("id").primaryKey().$default(() => newId("attrec")),
+	sessionId: text("session_id")
+		.notNull()
+		.references(() => attendanceSessions.id),
+	studentId: text("student_id")
+		.notNull()
+		.references(() => users.id),
+	matricNumber: text("matric_number"),
+	submittedAt: integer("submitted_at", { mode: "timestamp" })
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	clientNonceHash: text("client_nonce_hash"),
+});

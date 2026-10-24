@@ -125,3 +125,57 @@ export async function updateProfile(
 }
 export const logout = (token: string) =>
   request<void>("/api/me/logout", { method: "POST" }, token);
+
+export const createAttendanceSession = async (
+  token: string,
+  courseCode: string,
+  courseName: string,
+  durationMinutes = 60,
+): Promise<{ sessionId: string; sessionToken: string; endsAt: number }> =>
+  request(
+    "/api/attendance/sessions",
+    {
+      method: "POST",
+      body: JSON.stringify({ courseCode, courseName, durationMinutes }),
+    },
+    token,
+  );
+
+export const validateAttendanceSession = async (
+  token: string,
+  sessionId: string,
+  sessionToken: string,
+): Promise<{ sessionId: string; courseCode: string; courseName: string; endsAt: number }> =>
+  request(
+    "/api/attendance/sessions/validate",
+    {
+      method: "POST",
+      body: JSON.stringify({ sessionId, sessionToken }),
+    },
+    token,
+  );
+
+export const submitAttendance = async (
+  token: string,
+  sessionId: string,
+  sessionToken: string,
+  nonce?: string,
+): Promise<{ sessionId: string; courseCode: string; courseName: string }> =>
+  request(
+    "/api/attendance/submit",
+    {
+      method: "POST",
+      body: JSON.stringify({ sessionId, sessionToken, nonce }),
+    },
+    token,
+  );
+
+export const fetchLecturerAttendanceSessions = async (token: string): Promise<any[]> =>
+  request("/api/attendance/sessions/lecturer", {}, token);
+
+export const fetchAttendanceRecords = async (token: string, sessionId?: string): Promise<any[]> => {
+  const path = sessionId
+    ? `/api/attendance/records?sessionId=${encodeURIComponent(sessionId)}`
+    : "/api/attendance/records";
+  return request(path, {}, token);
+};

@@ -480,6 +480,7 @@ const App: React.FC = () => {
           <LecturerAttendanceScreen
             lecturerName={name}
             lecturerEmail={profile.email}
+            token={session?.token || ""}
             showToast={showToast}
             onLogout={handleLogout}
             onEditProfile={onEditProfile}
@@ -490,6 +491,7 @@ const App: React.FC = () => {
           <StudentAttendanceScreen
             studentName={name}
             matricNumber={profile.matricNumber}
+            token={session?.token || ""}
             showToast={showToast}
             onLogout={handleLogout}
             onEditProfile={onEditProfile}

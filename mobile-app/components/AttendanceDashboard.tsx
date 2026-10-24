@@ -377,15 +377,15 @@ export default function AttendanceDashboard({
               </View>
               <Text style={d.nearby}>A little closer to class.</Text>
               <Text style={d.attendanceHint}>
-                Bluetooth: coming later (Expo Go preview)
+                Bluetooth: phone-to-phone (development build required)
               </Text>
-              <Button disabled>Bluetooth coming later</Button>
+              <Button disabled>Requires dev build</Button>
             </View>
             {role === "lecturer" ? (
               <View style={s.card}>
                 <Text style={s.sectionTitle}>Create Attendance Session</Text>
                 <Text style={d.formHint}>
-                  Set up the details for your next class.
+                  Set up the details for your next class. Requires a development build (BLE not available in Expo Go).
                 </Text>
                 <Field
                   label="Course code"
@@ -412,11 +412,10 @@ export default function AttendanceDashboard({
                   contentStyle={s.buttonContent}
                   style={{ borderRadius: 30 }}
                 >
-                  Create session
+                  Create session (BLE)
                 </Button>
                 <Text style={d.formHint}>
-                  Session creation will be available when device connectivity is
-                  added.
+                  Use the backend API to create sessions; lecturer phone will advertise over BLE in a dev build.
                 </Text>
               </View>
             ) : (
@@ -429,7 +428,7 @@ export default function AttendanceDashboard({
                   <EmptyState
                     icon="access-point"
                     title="No nearby sessions yet"
-                    description="When device connectivity is ready, open sessions from your classroom will appear here."
+                    description="Scan for nearby Proxi sessions in a development build. Sessions are validated by the backend."
                   />
                 </View>
               </>
@@ -780,3 +779,5 @@ const d = StyleSheet.create({
   navActive: { backgroundColor: colors.green },
   navLabel: { fontSize: 9, color: colors.muted },
 });
+
+// BLE integration placeholders - actual implementation requires dev build
