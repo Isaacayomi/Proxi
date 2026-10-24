@@ -15,7 +15,36 @@ let currentAdvertisement: Advertisement | null = null;
 export const requestBlePermissions = async () => {
   try {
     if ((BleManager as any).requestPermissionsAsync) {
-      return await (BleManager as any).requestPermissionsAsync({ scan: true, connect: true, advertise: true });
+      const perms = await (BleManager as any).requestPermissionsAsync({
+        scan: true,
+        connect: true,
+        advertise: true,
+      });
+      if (perms) {
+        const denied = [];
+        if (perms.advertise === "denied") denied.push("advertise");
+        if (perms.scan === "denied") denied.push("scan");
+        if (perms.connect === "denied") denied.push("connect");
+        if (denied.length > 0) {
+          throw new Error(
+            `Bluetooth permissions denied (${denied.join(", ")}). Grant Nearby devices/Bluetooth permissions in Settings.`,
+          );
+        }
+      }
+      return perms;
+    }
+  } catch (e: any) {
+    if (e?.message?.includes("denied")) throw e;
+    console.log("[Proxi BLE] Permission request error:", e?.message);
+    throw new Error(e?.message || "Failed to request Bluetooth permissions");
+  }
+  return null;
+};
+
+export const getBleState = () => {
+  try {
+    if (typeof (BleManager as any).state !== "undefined") {
+      return (BleManager as any).state;
     }
   } catch {}
   return null;
@@ -23,22 +52,44 @@ export const requestBlePermissions = async () => {
 
 export const startLecturerAdvertising = async (sessionId: string, sessionToken: string) => {
   await stopLecturerAdvertising();
+
+  try {
+    await requestBlePermissions();
+  } catch (e: any) {
+    throw e;
+  }
+
+  const state = getBleState();
+  if (state === "poweredOff") {
+    throw new Error("Bluetooth is turned off. Enable Bluetooth and try again.");
+  }
+  if (state === "unsupported") {
+    throw new Error("Bluetooth is not supported on this device.");
+  }
+
   try {
     const adv = await (BleManager as any).startAdvertising(
       {
         localName: "Proxi",
         serviceUUIDs: [PROXI_SERVICE_UUID],
-        manufacturerData: {
-          companyId: 0xFFFF,
-          data: Buffer.from(JSON.stringify({ s: sessionId, t: sessionToken })),
-        },
       },
       { connectable: true },
     );
     currentAdvertisement = adv || null;
     return currentAdvertisement;
-  } catch (e) {
-    throw e;
+  } catch (e: any) {
+    console.log("[Proxi BLE] Advertising error:", e?.code || e?.message);
+    const msg = e?.message || String(e);
+    if (msg.includes("ADVERTISING_FAILED") || msg.includes("busy") || msg.includes("already")) {
+      throw new Error("Advertising failed. Try again or check Bluetooth settings.");
+    }
+    if (msg.includes("NOT_SUPPORTED")) {
+      throw new Error("Advertising not supported on this device.");
+    }
+    if (msg.includes("denied")) {
+      throw new Error("Bluetooth advertise permission denied. Grant permissions in Settings.");
+    }
+    throw new Error(msg);
   }
 };
 
@@ -55,11 +106,22 @@ export const stopLecturerAdvertising = async () => {
 
 export const scanForProxiSessions = async (
   onFound: (ad: ProxiSessionAd & { id: string; name?: string | null; rssi?: number }) => void,
-  timeoutMs = 10000,
+  timeoutMs = 15000,
 ): Promise<() => void> => {
   try {
     await requestBlePermissions();
-  } catch {}
+  } catch (e: any) {
+    throw e;
+  }
+
+  const state = getBleState();
+  if (state === "poweredOff") {
+    throw new Error("Bluetooth is turned off. Enable Bluetooth and try again.");
+  }
+  if (state === "unsupported") {
+    throw new Error("Bluetooth is not supported on this device.");
+  }
+
   try {
     const session = (BleManager as any).startScan(
       {
@@ -68,33 +130,21 @@ export const scanForProxiSessions = async (
       (results: any[]) => {
         if (!results || results.length === 0) return;
         for (const r of results) {
-          const md = r.manufacturerData;
-          if (md) {
-            try {
-              const entries = typeof md === "object" ? Object.values(md) : [];
-              for (const v of entries) {
-                if (v instanceof Uint8Array || Array.isArray(v)) {
-                  const buf = Buffer.from(v as any);
-                  try {
-                    const parsed = JSON.parse(buf.toString());
-                    if (parsed?.s || parsed?.sessionId) {
-                      onFound({
-                        sessionId: parsed.s || parsed.sessionId,
-                        sessionToken: parsed.t || parsed.sessionToken,
-                        id: r.id,
-                        name: r.name,
-                        rssi: r.rssi,
-                      });
-                      return;
-                    }
-                  } catch {}
-                }
-              }
-            } catch {}
+          if (r.serviceUUIDs?.includes(PROXI_SERVICE_UUID) || r.name === "Proxi") {
+            onFound({
+              sessionId: r.id,
+              sessionToken: undefined,
+              id: r.id,
+              name: r.name,
+              rssi: r.rssi,
+            });
+            return;
           }
         }
       },
-      () => {},
+      (err: any) => {
+        console.log("[Proxi BLE] Scan error:", err?.message);
+      },
     );
     const timer = setTimeout(() => {
       try {
@@ -107,7 +157,8 @@ export const scanForProxiSessions = async (
         session?.stop?.();
       } catch {}
     };
-  } catch {
-    return () => {};
+  } catch (e: any) {
+    console.log("[Proxi BLE] Start scan error:", e?.message);
+    throw new Error(e?.message || "Failed to start scanning");
   }
 };
