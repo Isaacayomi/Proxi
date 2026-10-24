@@ -179,3 +179,15 @@ export const fetchAttendanceRecords = async (token: string, sessionId?: string):
     : "/api/attendance/records";
   return request(path, {}, token);
 };
+
+export const registerAuth = (email: string): Promise<AuthSession> =>
+  request<AuthSession>("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+
+export const loginAuth = (email: string): Promise<AuthSession> =>
+  request<AuthSession>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });

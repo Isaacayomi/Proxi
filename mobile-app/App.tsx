@@ -16,19 +16,17 @@ import {
   ApiError,
   type AuthSession,
   type UserProfile,
-  completeAuth,
-  initiateAuth,
   fetchProfile,
   updateProfile,
   logout,
+  registerAuth,
 } from "./utils/api";
 import { readSession, saveSession, clearSession } from "./utils/session";
 
 import LecturerAttendanceScreen from "./components/LecturerAttendanceScreen";
 import Login from "./components/Login";
-import OTPVerification from "./components/OTPVerification";
-import StudentAttendanceScreen from "./components/StudentAttendanceScreen";
 import UserDetails from "./components/UserDetails";
+import StudentAttendanceScreen from "./components/StudentAttendanceScreen";
 
 const theme = {
   ...DefaultTheme,
@@ -72,10 +70,9 @@ const App: React.FC = () => {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [preview, setPreview] = useState<"student" | "lecturer" | null>(null);
   const [screen, setScreen] = useState<
-    "login" | "otp" | "details" | "dashboard"
+    "login" | "details" | "dashboard"
   >("login");
   const [email, setEmail] = useState("");
-  const [challenge, setChallenge] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [initError, setInitError] = useState(false);
   const [offline, setOffline] = useState(false);
@@ -219,7 +216,6 @@ const App: React.FC = () => {
         [lecturerEmail],
       );
 
-      // Group the results by session
       const sessionsMap = new Map<string, AttendanceSession>();
 
       rows.forEach((row) => {
@@ -236,7 +232,6 @@ const App: React.FC = () => {
         const session = sessionsMap.get(row.sessionId)!;
 
         if (row.studentName) {
-          // Check if there's an attendance record
           session.records.push({
             studentName: row.studentName,
             matricNumber: row.matricNumber,
@@ -333,20 +328,14 @@ const App: React.FC = () => {
     return () => {
       active = false;
     };
-    // Initialization runs only on mount or an explicit retry.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [retry]);
   const handleLogin = async (value: string) => {
     const normalized = value.trim().toLowerCase();
-    const result = await initiateAuth(normalized);
-    setEmail(normalized);
-    setChallenge(result.id);
-    setScreen("otp");
-  };
-  const handleVerify = async (otp: string) => {
-    const next = await completeAuth(challenge, otp);
+    const next = await registerAuth(normalized);
     await saveSession(next);
     setSession(next);
+    setEmail(normalized);
     setOffline(false);
     setScreen(needsDetails(next.user) ? "details" : "dashboard");
   };
@@ -394,7 +383,6 @@ const App: React.FC = () => {
       await clearSession();
       setSession(null);
       setEmail("");
-      setChallenge("");
       setOffline(false);
       setScreen("login");
     } catch {
@@ -409,21 +397,6 @@ const App: React.FC = () => {
           onPreview={(role) => {
             setPreview(role);
             setScreen("dashboard");
-          }}
-        />
-      );
-    if (screen === "otp")
-      return (
-        <OTPVerification
-          email={email}
-          onVerify={handleVerify}
-          onResend={async () => {
-            const result = await initiateAuth(email);
-            setChallenge(result.id);
-          }}
-          onBack={() => {
-            setChallenge("");
-            setScreen("login");
           }}
         />
       );
@@ -502,45 +475,65 @@ const App: React.FC = () => {
       </View>
     );
   };
+  if (isLoading)
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color={colors.green} />
+      </View>
+    );
+  if (initError)
+    return (
+      <View style={styles.loading}>
+        <Text style={styles.errorTitle}>Couldn’t start Proxi</Text>
+        <Text style={styles.errorText}>
+          We couldn’t open local storage. Try restarting the app.
+        </Text>
+        <Button
+          mode="contained"
+          onPress={() => {
+            setInitError(false);
+            setIsLoading(true);
+            setRetry((value) => value + 1);
+          }}
+        >
+          Try again
+        </Button>
+      </View>
+    );
   return (
     <SafeAreaProvider>
       <PaperProvider theme={theme}>
         <SafeAreaView style={styles.container}>
-          {isLoading ? (
-            <View style={styles.centerContainer}>
-              <ActivityIndicator size="large" color={colors.green} />
-              <Text>Opening Proxi…</Text>
-            </View>
-          ) : initError ? (
-            <View style={styles.centerContainer}>
-              <Text>We couldn’t open your saved data.</Text>
-              <Button
-                onPress={() => {
-                  setInitError(false);
-                  setIsLoading(true);
-                  setRetry((value) => value + 1);
-                }}
-              >
-                Try again
-              </Button>
-            </View>
-          ) : (
-            renderScreen()
-          )}
+          {renderScreen()}
         </SafeAreaView>
         <Toast />
       </PaperProvider>
     </SafeAreaProvider>
   );
 };
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  centerContainer: {
+  container: {
     flex: 1,
-    justifyContent: "center",
+    backgroundColor: colors.background,
+  },
+  loading: {
+    flex: 1,
     alignItems: "center",
+    justifyContent: "center",
     padding: 24,
-    gap: 16,
+    gap: 12,
+    backgroundColor: colors.background,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: colors.ink,
+  },
+  errorText: {
+    textAlign: "center",
+    color: colors.muted,
   },
 });
+
 export default App;
