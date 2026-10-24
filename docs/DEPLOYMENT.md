@@ -120,3 +120,8 @@ Attendance history is local to each phone; cloud attendance sync and the optiona
 - Configure your Cloudflare resources, Resend sender/key, and the real HTTPS API URL.
 - Build/install the APK and complete the physical-device checks above. Local automated checks and bundle exports do not replace device testing.
 - When the board arrives, fix/test the ESP32 firmware, restore the BLE transport, and create a custom Expo development build for hardware testing. Expo Go cannot load the BLE library.
+
+## BLE (phone-to-phone)
+- Requires Expo development build (not Expo Go). See mobile-app README.
+- Lecturer and student devices must have Bluetooth enabled and appropriate permissions granted.
+- Backend session creation/validation is required; BLE discovery alone is not sufficient for attendance.
