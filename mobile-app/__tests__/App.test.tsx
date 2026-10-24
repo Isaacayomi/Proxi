@@ -71,11 +71,11 @@ describe("Expo Go UI preview", () => {
         role === "student" ? "Available sessions" : "Create Attendance Session",
       );
       expect(attendanceOutput).toContain(
-        "Bluetooth: coming later (Expo Go preview)",
+        "Bluetooth: phone-to-phone (development build required)",
       );
       const bluetooth = tree.root
         .findAllByType(Button)
-        .find((button) => button.props.children === "Bluetooth coming later");
+        .find((button) => button.props.children === "Requires dev build");
       expect(bluetooth?.props.disabled).toBe(true);
       for (const label of ["History", "Profile"]) {
         const navItem = tree.root.findAllByProps({
