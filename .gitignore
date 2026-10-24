@@ -77,12 +77,12 @@ yarn-error.log
 mobile-app/vendor
 
 # Expo and local worker state
-mobile-app/node_modules/
-mobile-app/.expo/
+**/.expo/
 mobile-app/dist/
 mobile-app/android/
 mobile-app/ios/
 .env
-.env.local
+.env.*
+!.env.example
 .dev.vars
 .wrangler/
