@@ -1,16 +1,11 @@
-name = "neuron-api"
+
+name = "proxi-api"
 main = "src/index.ts"
-compatibility_date = "2024-07-18"
+compatibility_date = "2026-10-24"
 compatibility_flags = ["nodejs_compat"]
 
-# D1 stores user profiles, login challenges, rate limits, and authenticated sessions.
-# Replace the database ID with your own Cloudflare resource before deploying.
-
 [[d1_databases]]
-binding = "DB" # i.e. available in your Worker on env.DB
-database_name = "neuron-db"
+binding = "DB"
+database_name = "proxi-db"
+database_id = "ae79a9d6-e6c5-45ec-af9e-93e6ed029370"
 migrations_dir = "src/database/migrations"
-database_id = "fb89f6dd-b09a-4b16-b7e9-5fa7fc39cd6e"
-
-# [ai]
-# binding = "AI"

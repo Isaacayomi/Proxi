@@ -28,23 +28,25 @@
 		"valibot": "^0.37.0"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "^1.8.3",
 		"@cloudflare/vitest-pool-workers": "^0.4.23",
 		"@cloudflare/workers-types": "^4.20240529.0",
-		"simple-git-hooks": "^2.11.1",
-		"@biomejs/biome": "^1.8.3",
+		"@vitest/ui": "^2.0.5",
 		"drizzle-kit": "^0.23.1",
 		"lint-staged": "^15.2.7",
-		"@vitest/ui": "^2.0.5",
+		"simple-git-hooks": "^2.11.1",
 		"typescript": "^5.5.3",
-		"wrangler": "^3.57.2",
-		"vitest": "1.5.0"
+		"vitest": "1.5.0",
+		"wrangler": "^4.152.0"
 	},
 	"lint-staged": {
 		"*.ts": [
 			"biome format --no-errors-on-unmatched --write",
 			"biome check --no-errors-on-unmatched"
 		],
-		"!(*.ts)": ["biome format --no-errors-on-unmatched --write"]
+		"!(*.ts)": [
+			"biome format --no-errors-on-unmatched --write"
+		]
 	},
 	"simple-git-hooks": {
 		"pre-commit": "npx lint-staged"
