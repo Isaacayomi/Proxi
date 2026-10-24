@@ -244,3 +244,20 @@ test("concurrent verification can issue only one session", async () => {
 	]);
 	assert.deepEqual(results.map((r) => r.status).sort(), [200, 400]);
 });
+
+test("role detection by email domain without verification", async () => {
+	// OAU student email -> student
+	const student = await req("/api/auth/register", { email: "test@student.oauife.edu.ng" });
+	assert.equal(student.status, 200);
+	assert.equal(student.body.data.user.userType, "student");
+	
+	// Non-OAU email -> lecturer
+	const lecturer = await req("/api/auth/login", { email: "teacher@example.com" });
+	assert.equal(lecturer.status, 200);
+	assert.equal(lecturer.body.data.user.userType, "lecturer");
+	
+	// Cannot manipulate role from client
+	const manipulated = await req("/api/auth/register", { email: "bad@student.oauife.edu.ng", userType: "lecturer", role: "lecturer" });
+	assert.equal(manipulated.status, 200);
+	assert.equal(manipulated.body.data.user.userType, "student");
+});

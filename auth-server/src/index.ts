@@ -586,3 +586,75 @@ app.get("/api/attendance/records", async (c) => {
   }
   return c.json({ success: false, message: "Forbidden" }, 403);
 });
+
+app.post("/api/auth/register", async (c) => {
+	const body = await c.req.json().catch(() => null);
+	const email =
+		typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
+	if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)
+		return c.json(
+			{ success: false, message: "Enter a valid email address." },
+			400,
+		);
+	const role = roleFor(email);
+	await c.env.DB.prepare(
+		"INSERT INTO users(id,email,role) VALUES(?,?,?) ON CONFLICT(email) DO UPDATE SET role=excluded.role",
+	)
+		.bind(crypto.randomUUID(), email, role)
+		.run();
+	await c.env.DB.prepare("UPDATE users SET last_login=? WHERE email=?")
+		.bind(Math.floor(Date.now() / 1000), email)
+		.run();
+	const user = await c.env.DB.prepare("SELECT * FROM users WHERE email=?")
+		.bind(email)
+		.first<User>();
+	if (!user) throw new Error("User was not created");
+	const token = crypto.randomUUID() + crypto.randomUUID();
+	const expiresAt = Date.now() + 30 * 86400000;
+	await c.env.DB.prepare(
+		"INSERT INTO auth_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)",
+	)
+		.bind(await hash(token), user.id, expiresAt)
+		.run();
+	return c.json({
+		success: true,
+		message: "Signed in successfully.",
+		data: { token, expiresAt, user: profile(user) },
+	});
+});
+
+app.post("/api/auth/login", async (c) => {
+	const body = await c.req.json().catch(() => null);
+	const email =
+		typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
+	if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)
+		return c.json(
+			{ success: false, message: "Enter a valid email address." },
+			400,
+		);
+	const role = roleFor(email);
+	await c.env.DB.prepare(
+		"INSERT INTO users(id,email,role) VALUES(?,?,?) ON CONFLICT(email) DO UPDATE SET role=excluded.role",
+	)
+		.bind(crypto.randomUUID(), email, role)
+		.run();
+	await c.env.DB.prepare("UPDATE users SET last_login=? WHERE email=?")
+		.bind(Math.floor(Date.now() / 1000), email)
+		.run();
+	const user = await c.env.DB.prepare("SELECT * FROM users WHERE email=?")
+		.bind(email)
+		.first<User>();
+	if (!user) throw new Error("User was not created");
+	const token = crypto.randomUUID() + crypto.randomUUID();
+	const expiresAt = Date.now() + 30 * 86400000;
+	await c.env.DB.prepare(
+		"INSERT INTO auth_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)",
+	)
+		.bind(await hash(token), user.id, expiresAt)
+		.run();
+	return c.json({
+		success: true,
+		message: "Signed in successfully.",
+		data: { token, expiresAt, user: profile(user) },
+	});
+});
