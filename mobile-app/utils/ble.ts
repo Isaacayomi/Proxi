@@ -105,7 +105,7 @@ export const stopLecturerAdvertising = async () => {
 
 export const scanForProxiSessions = async (
   onFound: (ad: ProxiSessionAd & { id: string; name?: string | null; rssi?: number }) => void,
-  timeoutMs = 20000,
+  timeoutMs = 25000,
 ): Promise<() => void> => {
   try {
     await requestBlePermissions();
@@ -126,24 +126,18 @@ export const scanForProxiSessions = async (
       {},
       (results: any[]) => {
         if (!results || results.length === 0) return;
-        console.log("[Proxi BLE] Results:", JSON.stringify(results.map(r => ({
-          id: r.id,
-          name: r.name,
-          localName: r.localName,
-          serviceUUIDs: r.serviceUUIDs,
-          manufacturerData: r.manufacturerData,
-        }))));
-        
+        console.log("[Proxi BLE] RAW RESULTS:", JSON.stringify(results));
+
         for (const r of results) {
-          const serviceUUIDs = r.serviceUUIDs || r.advertisement?.serviceUUIDs || [];
-          const name = r.name || r.localName || r.advertisement?.localName;
-          
-          const hasProxiService = serviceUUIDs.some((uuid: string) => 
-            (uuid || '').toLowerCase().replace(/-/g, '') === PROXI_SERVICE_UUID.replace(/-/g, '').toLowerCase()
+          const serviceUUIDs = r.serviceUUIDs || r.advertisement?.serviceUUIDs || r.scanRecord?.serviceUUIDs || [];
+          const name = r.name || r.localName || r.advertisement?.localName || r.scanRecord?.localName;
+
+          const hasProxiService = serviceUUIDs.some((uuid: string) =>
+            (uuid || "").toLowerCase().replace(/-/g, "") === PROXI_SERVICE_UUID.replace(/-/g, "").toLowerCase()
           );
-          
-          if (hasProxiService || name === "Proxi") {
-            console.log("[Proxi BLE] Found Proxi session:", r.id);
+
+          if (hasProxiService || name === "Proxi" || (name && name.toLowerCase().includes("proxi"))) {
+            console.log("[Proxi BLE] MATCHED Proxi:", r.id, name);
             onFound({
               sessionId: r.id,
               sessionToken: undefined,
@@ -151,6 +145,9 @@ export const scanForProxiSessions = async (
               name: name,
               rssi: r.rssi,
             });
+            try {
+              session?.stop?.();
+            } catch {}
             return;
           }
         }
@@ -159,11 +156,13 @@ export const scanForProxiSessions = async (
         console.log("[Proxi BLE] Scan error:", err?.message);
       },
     );
+
     const timer = setTimeout(() => {
       try {
         session?.stop?.();
       } catch {}
     }, timeoutMs);
+
     return () => {
       clearTimeout(timer);
       try {
