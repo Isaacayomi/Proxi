@@ -1,13 +1,13 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import AttendanceDashboard, {
   AttendanceSession,
   AttendanceRecord,
 } from "./AttendanceDashboard";
-import { createAttendanceSession } from "../utils/api";
-import { startLecturerAdvertising, stopLecturerAdvertising } from "../utils/ble";
+import { createAttendanceSession, getSessionQRCode, endAttendanceSession } from "../utils/api";
 import { View } from "react-native";
 import { Button, Text } from "react-native-paper";
 import { colors } from "../ui/design";
+import QRCode from "react-native-qrcode-svg";
 type Props = {
   lecturerName: string;
   lecturerEmail: string;
@@ -35,11 +35,25 @@ export default function LecturerAttendanceScreen({
 }: Props) {
   const [activeSession, setActiveSession] = useState<any>(null);
   const [creating, setCreating] = useState(false);
+  const [qrData, setQrData] = useState<string>("");
+  const [qrError, setQrError] = useState("");
+  const intervalRef = useRef<any>(null);
 
   const load = useCallback(
     () => fetchAttendanceSessions(lecturerEmail),
     [fetchAttendanceSessions, lecturerEmail],
   );
+
+  const fetchQR = async (sessionId: string) => {
+    try {
+      setQrError("");
+      const res = await getSessionQRCode(token, sessionId);
+      setQrData(res.qr || "");
+    } catch (e: any) {
+      setQrError(e?.message || "Failed to refresh QR code");
+      setQrData("");
+    }
+  };
 
   const handleCreate = async () => {
     if (!token) {
@@ -55,12 +69,10 @@ export default function LecturerAttendanceScreen({
         60,
       );
       setActiveSession(res);
-      try {
-        await startLecturerAdvertising(res.sessionId, res.sessionToken);
-        showToast("Session created and advertising", "success");
-      } catch (e) {
-        showToast("Advertising failed - check permissions/dev build", "error");
-      }
+      await fetchQR(res.sessionId);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      intervalRef.current = setInterval(() => fetchQR(res.sessionId), 15000);
+      showToast("Session created", "success");
     } catch (e: any) {
       showToast(e?.message || "Failed to create session", "error");
     } finally {
@@ -68,19 +80,25 @@ export default function LecturerAttendanceScreen({
     }
   };
 
-  const handleStop = async () => {
+  const handleEnd = async () => {
+    if (!activeSession) return;
     try {
-      await stopLecturerAdvertising();
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      await endAttendanceSession(token, activeSession.sessionId);
       setActiveSession(null);
-      showToast("Advertising stopped", "success");
-    } catch (e) {
-      showToast("Failed to stop", "error");
+      setQrData("");
+      showToast("Session ended", "success");
+    } catch (e: any) {
+      showToast(e?.message || "Failed to end session", "error");
     }
   };
 
   useEffect(() => {
     return () => {
-      stopLecturerAdvertising().catch(() => {});
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
 
@@ -88,20 +106,25 @@ export default function LecturerAttendanceScreen({
     <>
       <View style={{ padding: 16 }}>
         <Text variant="titleMedium" style={{ marginBottom: 8 }}>
-          BLE Session
+          QR Attendance
         </Text>
         {activeSession ? (
-          <View style={{ backgroundColor: colors.mint, padding: 12, borderRadius: 8 }}>
-            <Text>Course: {activeSession.courseCode} - {activeSession.courseName}</Text>
-            <Text>Session ID: {activeSession.sessionId}</Text>
-            <Button mode="outlined" onPress={handleStop} style={{ marginTop: 8 }}>
-              Stop Advertising
+          <View style={{ backgroundColor: colors.mint, padding: 12, borderRadius: 8, alignItems: "center" }}>
+            <Text style={{ marginBottom: 8 }}>Course: {activeSession.courseCode} - {activeSession.courseName}</Text>
+            {qrData ? (
+              <QRCode value={qrData} size={200} />
+            ) : (
+              <Text>{qrError || "Loading QR..."}</Text>
+            )}
+            <Text style={{ marginTop: 8, fontSize: 12 }}>QR rotates every 15 seconds</Text>
+            <Button mode="outlined" onPress={handleEnd} style={{ marginTop: 8 }}>
+              End Session
             </Button>
           </View>
         ) : (
           <View>
             <Button mode="contained" onPress={handleCreate} loading={creating} disabled={creating}>
-              Create Session & Advertise
+              Start Session & Show QR
             </Button>
           </View>
         )}

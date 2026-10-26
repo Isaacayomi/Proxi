@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useState } from "react";
 import AttendanceDashboard, { StudentAttendance } from "./AttendanceDashboard";
-import { scanForProxiSessions } from "../utils/ble";
-import { validateAttendanceSession, submitAttendance } from "../utils/api";
+import { submitAttendanceQR } from "../utils/api";
 import { View } from "react-native";
 import { Button, Text } from "react-native-paper";
+import { BarCodeScanner } from "expo-barcode-scanner";
 import { colors } from "../ui/design";
 type Props = {
   studentName: string;
@@ -25,10 +25,9 @@ export default function StudentAttendanceScreen({
   fetchStudentAttendances,
 }: Props) {
   const [scanning, setScanning] = useState(false);
-  const [found, setFound] = useState<any>(null);
-  const [validating, setValidating] = useState(false);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const stopRef = useRef<(() => void) | null>(null);
+  const [scanned, setScanned] = useState(false);
 
   const load = useCallback(
     () => fetchStudentAttendances(),
@@ -40,98 +39,56 @@ export default function StudentAttendanceScreen({
       showToast("Please sign in again", "error");
       return;
     }
-    setScanning(true);
-    setFound(null);
-    try {
-      const stop = await scanForProxiSessions(async (ad) => {
-        if (ad.sessionId && ad.sessionToken) {
-          setFound(ad);
-          try {
-            setValidating(true);
-            await validateAttendanceSession(token, ad.sessionId, ad.sessionToken);
-            showToast("Session validated", "success");
-          } catch (e: any) {
-            showToast(e?.message || "Session validation failed", "error");
-            setFound(null);
-          } finally {
-            setValidating(false);
-          }
-        }
-      }, 15000);
-      stopRef.current = stop;
-    } catch (e: any) {
-      showToast(e?.message || "Scan failed - check permissions/dev build", "error");
-      setScanning(false);
+    const { status } = await BarCodeScanner.requestPermissionsAsync();
+    setHasPermission(status === "granted");
+    if (status !== "granted") {
+      showToast("Camera permission denied", "error");
+      return;
     }
+    setScanned(false);
+    setScanning(true);
   };
 
-  const stopScan = () => {
-    try {
-      stopRef.current?.();
-    } catch {}
-    stopRef.current = null;
-    setScanning(false);
-  };
-
-  const handleCheckIn = async () => {
-    if (!found?.sessionId || !found?.sessionToken) return;
+  const handleBarCodeScanned = async ({ data }: any) => {
+    if (scanned || submitting) return;
+    setScanned(true);
     setSubmitting(true);
     try {
-      await submitAttendance(token, found.sessionId, found.sessionToken);
+      await submitAttendanceQR(token, data);
       showToast("Attendance submitted", "success");
-      stopScan();
-      setFound(null);
+      setScanning(false);
     } catch (e: any) {
       if (e?.status === 409) {
         showToast(e?.message || "Already checked in", "error");
       } else {
         showToast(e?.message || "Check-in failed", "error");
       }
+      setScanned(false);
     } finally {
       setSubmitting(false);
     }
   };
 
-  useEffect(() => {
-    return () => {
-      try {
-        stopRef.current?.();
-      } catch {}
-    };
-  }, []);
-
   return (
     <>
       <View style={{ padding: 16 }}>
         <Text variant="titleMedium" style={{ marginBottom: 8 }}>
-          Find & Check In
+          Scan QR to Check In
         </Text>
         {scanning ? (
-          <View>
-            <Text>Scanning for nearby sessions...</Text>
-            <Button onPress={stopScan} style={{ marginTop: 8 }}>
-              Stop Scan
+          <View style={{ height: 300 }}>
+            <BarCodeScanner
+              onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+              style={{ flex: 1 }}
+            />
+            <Button onPress={() => setScanning(false)} style={{ marginTop: 8 }}>
+              Cancel
             </Button>
           </View>
         ) : (
-          <Button mode="contained" onPress={startScan}>
-            Scan for Sessions
+          <Button mode="contained" onPress={startScan} disabled={submitting}>
+            Scan QR Code
           </Button>
-        )}
-        {found && (
-          <View style={{ backgroundColor: colors.mint, padding: 12, borderRadius: 8, marginTop: 8 }}>
-            <Text>Session: {found.sessionId}</Text>
-            <Text>Validated: {validating ? "Checking..." : "Yes"}</Text>
-            <Button
-              mode="contained"
-              onPress={handleCheckIn}
-              loading={submitting}
-              disabled={submitting || validating}
-              style={{ marginTop: 8 }}
-            >
-              Check In
-            </Button>
-          </View>
         )}
       </View>
       <AttendanceDashboard

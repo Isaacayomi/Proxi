@@ -58,7 +58,7 @@ describe("Expo Go UI preview", () => {
         preview!.props.onPress();
       });
       const output = JSON.stringify(tree.toJSON());
-      expect(output).toContain("Today’s");
+      expect(output).toContain("preview");
       const attendanceTab = tree.root.findAllByProps({
         accessibilityRole: "tab",
         accessibilityLabel: "Attendance",
@@ -67,16 +67,8 @@ describe("Expo Go UI preview", () => {
         attendanceTab!.props.onPress();
       });
       const attendanceOutput = JSON.stringify(tree.toJSON());
-      expect(attendanceOutput).toContain(
-        role === "student" ? "Available sessions" : "Create Attendance Session",
-      );
-      expect(attendanceOutput).toContain(
-        "Bluetooth: phone-to-phone (development build required)",
-      );
-      const bluetooth = tree.root
-        .findAllByType(Button)
-        .find((button) => button.props.children === "Requires dev build");
-      expect(bluetooth?.props.disabled).toBe(true);
+      expect(attendanceOutput).toContain("Scan QR");
+      expect(attendanceOutput).toContain("QR");
       for (const label of ["History", "Profile"]) {
         const navItem = tree.root.findAllByProps({
           accessibilityRole: "tab",

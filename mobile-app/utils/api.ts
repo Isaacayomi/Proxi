@@ -191,3 +191,16 @@ export const loginAuth = (email: string): Promise<AuthSession> =>
     method: "POST",
     body: JSON.stringify({ email }),
   });
+
+export const getSessionQRCode = async (token: string, sessionId: string): Promise<any> =>
+  request(`/api/attendance/sessions/${sessionId}/qr`, {}, token);
+
+export const endAttendanceSession = async (token: string, sessionId: string): Promise<any> =>
+  request(`/api/attendance/sessions/${sessionId}/end`, { method: "POST" }, token);
+
+export const submitAttendanceQR = async (token: string, qr: string): Promise<any> =>
+  request(
+    "/api/attendance/submit-qr",
+    { method: "POST", body: JSON.stringify({ qr }) },
+    token,
+  );

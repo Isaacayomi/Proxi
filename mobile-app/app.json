@@ -7,21 +7,6 @@
     "userInterfaceStyle": "light",
     "plugins": [
       "expo-secure-store",
-      [
-        "expo-ble-kit",
-        {
-          "bluetoothAlwaysPermission": "Allow $(PRODUCT_NAME) to use Bluetooth for attendance check-in.",
-          "ios": {
-            "backgroundModes": [
-              "central",
-              "peripheral"
-            ]
-          },
-          "android": {
-            "advertise": true
-          }
-        }
-      ],
       "expo-sharing",
       "expo-font"
     ],

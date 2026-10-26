@@ -274,7 +274,7 @@ const App: React.FC = () => {
     }
   };
 
-  const fetchStudentAttendances = async (): Promise<MarkedAttendance[]> => {
+  const fetchStudentAttendances = async (): Promise<any[]> => {
     if (!db) {
       throw new Error("Attendance storage is unavailable.");
     }
@@ -457,8 +457,8 @@ const App: React.FC = () => {
             showToast={showToast}
             onLogout={handleLogout}
             onEditProfile={onEditProfile}
-            saveAttendanceSession={saveAttendanceSession}
-            fetchAttendanceSessions={fetchAttendanceSessions}
+            saveAttendanceSession={saveAttendanceSession as any}
+            fetchAttendanceSessions={fetchAttendanceSessions as any}
           />
         ) : (
           <StudentAttendanceScreen
@@ -468,8 +468,8 @@ const App: React.FC = () => {
             showToast={showToast}
             onLogout={handleLogout}
             onEditProfile={onEditProfile}
-            saveStudentAttendance={saveStudentAttendance}
-            fetchStudentAttendances={fetchStudentAttendances}
+            saveStudentAttendance={saveStudentAttendance as any}
+            fetchStudentAttendances={fetchStudentAttendances as any}
           />
         )}
       </View>
