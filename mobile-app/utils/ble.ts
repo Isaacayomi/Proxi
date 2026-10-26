@@ -122,22 +122,33 @@ export const scanForProxiSessions = async (
   }
 
   try {
-    // Scan without service filter for better compatibility on some Android devices
     const session = (BleManager as any).startScan(
       {},
       (results: any[]) => {
         if (!results || results.length === 0) return;
+        console.log("[Proxi BLE] Results:", JSON.stringify(results.map(r => ({
+          id: r.id,
+          name: r.name,
+          localName: r.localName,
+          serviceUUIDs: r.serviceUUIDs,
+          manufacturerData: r.manufacturerData,
+        }))));
+        
         for (const r of results) {
-          const serviceUUIDs = r.serviceUUIDs || [];
+          const serviceUUIDs = r.serviceUUIDs || r.advertisement?.serviceUUIDs || [];
+          const name = r.name || r.localName || r.advertisement?.localName;
+          
           const hasProxiService = serviceUUIDs.some((uuid: string) => 
-            uuid?.toLowerCase().replace(/-/g, '') === PROXI_SERVICE_UUID.replace(/-/g, '').toLowerCase()
+            (uuid || '').toLowerCase().replace(/-/g, '') === PROXI_SERVICE_UUID.replace(/-/g, '').toLowerCase()
           );
-          if (hasProxiService || r.name === "Proxi" || r.localName === "Proxi") {
+          
+          if (hasProxiService || name === "Proxi") {
+            console.log("[Proxi BLE] Found Proxi session:", r.id);
             onFound({
               sessionId: r.id,
               sessionToken: undefined,
               id: r.id,
-              name: r.name || r.localName,
+              name: name,
               rssi: r.rssi,
             });
             return;
