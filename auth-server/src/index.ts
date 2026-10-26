@@ -222,7 +222,7 @@ app.post("/api/auth/complete", async (c) => {
     .run();
   const user = await c.env.DB.prepare("SELECT * FROM users WHERE email=?")
     .bind(email)
-    .first<User>();
+    .first() as User | null;
   if (!user) throw new Error("User was not created");
   const token = crypto.randomUUID() + crypto.randomUUID();
   const expiresAt = Date.now() + 30 * 86400000;
@@ -246,7 +246,7 @@ app.use("/api/me/*", async (c, next) => {
     "SELECT u.* FROM users u JOIN auth_sessions s ON s.user_id=u.id WHERE s.token_hash=? AND s.expires_at>?",
   )
     .bind(tokenHash, Date.now())
-    .first<User>();
+    .first() as User | null;
   if (!user)
     return c.json(
       {
@@ -360,6 +360,143 @@ app.onError((error, c) => {
 });
 export default app;
 
+
+
+const checkQrRate = async (c: any, key: string, limit: number, windowMs: number) => {
+	const now = Date.now();
+	const res = await c.env.DB.prepare(
+		"INSERT INTO auth_rates(key,started_at,count) VALUES(?,?,1) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN started_at<? THEN 1 ELSE count+1 END, started_at=CASE WHEN started_at<? THEN ? ELSE started_at END RETURNING count, started_at",
+	)
+		.bind(key, now, now - windowMs, now)
+		.first() as any;
+	if ((res?.count ?? 0) > limit) {
+		const retryAfter = Math.max(1, Math.ceil(((res?.started_at ?? now) + windowMs - now) / 1000));
+		c.header("Retry-After", String(retryAfter));
+		return false;
+	}
+	return true;
+};
+
+app.get("/api/attendance/sessions/:id/qr", async (c) => {
+	const auth = await requireAuth(c);
+	if (!auth?.user) return c.json({ success: false, message: "Unauthorized" }, 401);
+	if (auth.user.role !== "lecturer") return c.json({ success: false, message: "Only lecturers can view QR codes" }, 403);
+	const key = `qrgen:${auth.user.id}`;
+	if (!(await checkQrRate(c, key, 60, 60000))) {
+		return c.json({ success: false, message: "Too many requests" }, 429);
+	}
+	const sessionId = c.req.param("id");
+	const row = await c.env.DB.prepare(
+		"SELECT id,lecturer_id,course_code,course_name,starts_at,ends_at,status,qr_secret_hash FROM attendance_sessions WHERE id=?",
+	)
+		.bind(sessionId)
+		.first() as any;
+	if (!row) return c.json({ success: false, message: "Session not found" }, 404);
+	if (row.lecturer_id !== auth.user.id) return c.json({ success: false, message: "Forbidden" }, 403);
+	if (row.status !== "active") return c.json({ success: false, message: "Session is not active" }, 400);
+	if (Date.now() > row.ends_at) {
+		await c.env.DB.prepare("UPDATE attendance_sessions SET status='expired' WHERE id=?").bind(sessionId).run();
+		return c.json({ success: false, message: "Session expired" }, 400);
+	}
+	const rotation = 15;
+	const now = Date.now();
+	const slot = Math.floor(now / (rotation * 1000));
+	const nonce = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+	const issuedAt = now;
+	const expiresAt = (slot + 1) * rotation * 1000;
+	const payload = JSON.stringify({ sessionId, slot, nonce, issuedAt, expiresAt });
+	let secret = row.qr_secret_hash;
+	if (!secret) {
+		secret = crypto.randomUUID() + crypto.randomUUID();
+		await c.env.DB.prepare("UPDATE attendance_sessions SET qr_secret_hash=? WHERE id=?").bind(secret, sessionId).run();
+	}
+	const signature = await signPayload(secret, payload);
+	return c.json({
+		success: true,
+		data: {
+		 qr: JSON.stringify({ p: payload, s: signature }),
+		 rotationSeconds: rotation,
+		 expiresAt,
+		 sessionId: row.id,
+		 courseCode: row.course_code,
+		 courseName: row.course_name,
+		},
+	});
+});
+
+app.post("/api/attendance/sessions/:id/end", async (c) => {
+	const auth = await requireAuth(c);
+	if (!auth?.user) return c.json({ success: false, message: "Unauthorized" }, 401);
+	if (auth.user.role !== "lecturer") return c.json({ success: false, message: "Only lecturers can end sessions" }, 403);
+	const sessionId = c.req.param("id");
+	const row = await c.env.DB.prepare("SELECT id,lecturer_id FROM attendance_sessions WHERE id=?")
+		.bind(sessionId)
+		.first() as any;
+	if (!row) return c.json({ success: false, message: "Session not found" }, 404);
+	if (row.lecturer_id !== auth.user.id) return c.json({ success: false, message: "Forbidden" }, 403);
+	await c.env.DB.prepare("UPDATE attendance_sessions SET status='ended' WHERE id=?").bind(sessionId).run();
+	return c.json({ success: true, message: "Session ended" });
+});
+
+app.post("/api/attendance/submit-qr", async (c) => {
+	const auth = await requireAuth(c);
+	if (!auth?.user) return c.json({ success: false, message: "Unauthorized" }, 401);
+	if (auth.user.role !== "student") return c.json({ success: false, message: "Only students can check in" }, 403);
+	const key = `qrsub:${auth.user.id}`;
+	if (!(await checkQrRate(c, key, 30, 60000))) {
+		return c.json({ success: false, message: "Too many requests" }, 429);
+	}
+	const body = await c.req.json().catch(() => null);
+	const qr = typeof body?.qr === "string" ? body.qr : "";
+	if (!qr) return c.json({ success: false, message: "QR code required" }, 400);
+	let parsed: any;
+	try {
+		parsed = JSON.parse(qr);
+	} catch {
+		return c.json({ success: false, message: "Invalid QR code" }, 400);
+	}
+	let payload: any;
+	try {
+		payload = JSON.parse(parsed.p);
+	} catch {
+		return c.json({ success: false, message: "Invalid QR code" }, 400);
+	}
+	const sessionId = payload.sessionId;
+	if (!sessionId) return c.json({ success: false, message: "Invalid QR code" }, 400);
+	const row = await c.env.DB.prepare(
+		"SELECT id,course_code,course_name,starts_at,ends_at,status,session_token_hash,qr_secret_hash FROM attendance_sessions WHERE id=?",
+	)
+		.bind(sessionId)
+		.first() as any;
+	if (!row) return c.json({ success: false, message: "Session not found" }, 404);
+	if (row.status !== "active") return c.json({ success: false, message: "Session is not active" }, 400);
+	const now = Date.now();
+	if (now > row.ends_at) {
+		await c.env.DB.prepare("UPDATE attendance_sessions SET status='expired' WHERE id=?").bind(sessionId).run();
+		return c.json({ success: false, message: "Session expired" }, 400);
+	}
+	if (now > payload.expiresAt + 5000) return c.json({ success: false, message: "QR code expired" }, 400);
+	const secret = row.qr_secret_hash;
+	if (!secret) return c.json({ success: false, message: "Invalid QR code" }, 400);
+	const valid = await verifyPayload(secret, parsed.p, parsed.s);
+	if (!valid) return c.json({ success: false, message: "Invalid QR code" }, 400);
+	try {
+		await c.env.DB.prepare(
+			"INSERT INTO attendance_records(session_id,student_id,matric_number,client_nonce_hash) VALUES(?,?,?,?)",
+		)
+			.bind(sessionId, auth.user.id, auth.user.matric_number, await hash(payload.nonce || crypto.randomUUID()))
+			.run();
+	} catch (e: any) {
+		if (String(e?.message || e).includes("UNIQUE")) {
+			return c.json({ success: false, message: "You have already checked in for this session" }, 409);
+		}
+		throw e;
+	}
+	return c.json({ success: true, message: "Attendance recorded", data: { sessionId, courseCode: row.course_code, courseName: row.course_name } });
+});
+
+
+
 const requireAuth = async (c: any) => {
   const token = c.req.header("Authorization")?.match(/^Bearer (.+)$/)?.[1];
   if (!token || token.length > 200) return null;
@@ -368,7 +505,7 @@ const requireAuth = async (c: any) => {
     "SELECT u.* FROM users u JOIN auth_sessions s ON s.user_id=u.id WHERE s.token_hash=? AND s.expires_at>?",
   )
     .bind(tokenHash, Date.now())
-    .first<User>();
+    .first() as User | null;
   if (!user) return null;
   c.set("user", user);
   c.set("tokenHash", tokenHash);
@@ -444,7 +581,7 @@ app.post("/api/attendance/sessions/validate", async (c) => {
     "SELECT id,lecturer_id,course_code,course_name,starts_at,ends_at,status,session_token_hash FROM attendance_sessions WHERE id=?",
   )
     .bind(sessionId)
-    .first<any>();
+    .first() as any;
   if (!row)
     return c.json({ success: false, message: "Session not found" }, 404);
   if (row.status !== "active")
@@ -494,7 +631,7 @@ app.post("/api/attendance/submit", async (c) => {
     "SELECT id,course_code,course_name,starts_at,ends_at,status,session_token_hash FROM attendance_sessions WHERE id=?",
   )
     .bind(sessionId)
-    .first<any>();
+    .first() as any;
   if (!row)
     return c.json({ success: false, message: "Session not found" }, 404);
   if (row.status !== "active")
@@ -574,7 +711,7 @@ app.get("/api/attendance/records", async (c) => {
       "SELECT id,lecturer_id FROM attendance_sessions WHERE id=?",
     )
       .bind(sessionId)
-      .first<any>();
+      .first() as any;
     if (!session || session.lecturer_id !== auth.user.id)
       return c.json({ success: false, message: "Forbidden" }, 403);
     const rows = await c.env.DB.prepare(
@@ -658,3 +795,22 @@ app.post("/api/auth/login", async (c) => {
 		data: { token, expiresAt, user: profile(user) },
 	});
 });
+
+const signPayload = async (secret: string, payload: string) => {
+	const key = await crypto.subtle.importKey(
+		"raw",
+		new TextEncoder().encode(secret),
+		{ name: "HMAC", hash: "SHA-256" },
+		false,
+		["sign"],
+	);
+	const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
+	return Array.from(new Uint8Array(sig))
+		.map((b) => b.toString(16).padStart(2, "0"))
+		.join("");
+};
+
+const verifyPayload = async (secret: string, payload: string, signature: string) => {
+	const sig = await signPayload(secret, payload);
+	return sig === signature;
+};

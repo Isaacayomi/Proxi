@@ -6,6 +6,9 @@ const prefixes = {
 	student: "student",
 	session: "session",
 	lecturer: "lecturer",
+	attsession: "attsession",
+	attrec: "attrec",
+	qrrot: "qrrot",
 } as const;
 
 export const nanoid = customAlphabet(

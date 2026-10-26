@@ -1,1 +1,1 @@
-DROP TABLE `otps`;
+-- DROP TABLE `otps`;

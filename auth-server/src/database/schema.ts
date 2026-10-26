@@ -52,3 +52,17 @@ export const attendanceRecords = sqliteTable("attendance_records", {
 		.default(sql`CURRENT_TIMESTAMP`),
 	clientNonceHash: text("client_nonce_hash"),
 });
+
+export const qrRotations = sqliteTable("qr_rotations", {
+	id: text("id").primaryKey().$default(() => newId("qrrot")),
+	sessionId: text("session_id")
+		.notNull()
+		.references(() => attendanceSessions.id),
+	slot: integer("slot").notNull(),
+	nonce: text("nonce").notNull(),
+	issuedAt: integer("issued_at", { mode: "timestamp" }).notNull(),
+	expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+	createdAt: integer("created_at", { mode: "timestamp" })
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+});
