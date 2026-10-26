@@ -1,7 +1,6 @@
-jest.mock('expo-barcode-scanner', () => ({
-  BarCodeScanner: ({ onBarCodeScanned }) => null,
-  requestPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
-  PermissionStatus: { GRANTED: 'granted', DENIED: 'denied' },
+jest.mock('expo-camera', () => ({
+  CameraView: ({ onBarcodeScanned }) => null,
+  useCameraPermissions: () => [{ granted: true }, jest.fn(async () => ({ granted: true }))],
 }));
 
 jest.mock('react-native-qrcode-svg', () => {

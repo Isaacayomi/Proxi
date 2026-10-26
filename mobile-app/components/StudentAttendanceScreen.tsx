@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from "react";
-import AttendanceDashboard, { StudentAttendance } from "./AttendanceDashboard";
+import AttendanceDashboard from "./AttendanceDashboard";
 import { submitAttendanceQR } from "../utils/api";
 import { View } from "react-native";
 import { Button, Text } from "react-native-paper";
-import { BarCodeScanner } from "expo-barcode-scanner";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import { colors } from "../ui/design";
 type Props = {
   studentName: string;
@@ -12,8 +12,8 @@ type Props = {
   showToast: (message: string, type?: "success" | "error") => void;
   onLogout: () => Promise<void>;
   onEditProfile?: () => void;
-  saveStudentAttendance: (attendance: StudentAttendance) => Promise<void>;
-  fetchStudentAttendances: () => Promise<StudentAttendance[]>;
+  saveStudentAttendance: (attendance: any) => Promise<void>;
+  fetchStudentAttendances: () => Promise<any[]>;
 };
 export default function StudentAttendanceScreen({
   studentName,
@@ -25,7 +25,7 @@ export default function StudentAttendanceScreen({
   fetchStudentAttendances,
 }: Props) {
   const [scanning, setScanning] = useState(false);
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [permission, requestPermission] = useCameraPermissions();
   const [submitting, setSubmitting] = useState(false);
   const [scanned, setScanned] = useState(false);
 
@@ -39,11 +39,12 @@ export default function StudentAttendanceScreen({
       showToast("Please sign in again", "error");
       return;
     }
-    const { status } = await BarCodeScanner.requestPermissionsAsync();
-    setHasPermission(status === "granted");
-    if (status !== "granted") {
-      showToast("Camera permission denied", "error");
-      return;
+    if (!permission?.granted) {
+      const res = await requestPermission();
+      if (!res.granted) {
+        showToast("Camera permission denied", "error");
+        return;
+      }
     }
     setScanned(false);
     setScanning(true);
@@ -77,9 +78,12 @@ export default function StudentAttendanceScreen({
         </Text>
         {scanning ? (
           <View style={{ height: 300 }}>
-            <BarCodeScanner
-              onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+            <CameraView
               style={{ flex: 1 }}
+              barcodeScannerSettings={{
+                barcodeTypes: ["qr"],
+              }}
+              onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
             />
             <Button onPress={() => setScanning(false)} style={{ marginTop: 8 }}>
               Cancel
