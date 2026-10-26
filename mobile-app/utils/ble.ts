@@ -35,7 +35,6 @@ export const requestBlePermissions = async () => {
     }
   } catch (e: any) {
     if (e?.message?.includes("denied")) throw e;
-    console.log("[Proxi BLE] Permission request error:", e?.message);
     throw new Error(e?.message || "Failed to request Bluetooth permissions");
   }
   return null;
@@ -106,7 +105,7 @@ export const stopLecturerAdvertising = async () => {
 
 export const scanForProxiSessions = async (
   onFound: (ad: ProxiSessionAd & { id: string; name?: string | null; rssi?: number }) => void,
-  timeoutMs = 15000,
+  timeoutMs = 20000,
 ): Promise<() => void> => {
   try {
     await requestBlePermissions();
@@ -123,19 +122,22 @@ export const scanForProxiSessions = async (
   }
 
   try {
+    // Scan without service filter for better compatibility on some Android devices
     const session = (BleManager as any).startScan(
-      {
-        services: [PROXI_SERVICE_UUID],
-      },
+      {},
       (results: any[]) => {
         if (!results || results.length === 0) return;
         for (const r of results) {
-          if (r.serviceUUIDs?.includes(PROXI_SERVICE_UUID) || r.name === "Proxi") {
+          const serviceUUIDs = r.serviceUUIDs || [];
+          const hasProxiService = serviceUUIDs.some((uuid: string) => 
+            uuid?.toLowerCase().replace(/-/g, '') === PROXI_SERVICE_UUID.replace(/-/g, '').toLowerCase()
+          );
+          if (hasProxiService || r.name === "Proxi" || r.localName === "Proxi") {
             onFound({
               sessionId: r.id,
               sessionToken: undefined,
               id: r.id,
-              name: r.name,
+              name: r.name || r.localName,
               rssi: r.rssi,
             });
             return;
