@@ -25,8 +25,6 @@ Operating directly within standard desktop, tablet, and mobile web browsers via 
   - **Student Check-In Portal:** Discover active lecture sessions, receive real-time distance and GPS accuracy feedback, verify presence with one click, and view historical records.
 - **Atomic Concurrency & Duplicate Prevention:** Database-level unique constraints and RPC transaction boundaries guarantee that no student can check in more than once per lecture session.
 - **Automatic Course Enrollment:** Seamless enrollment checks ensure students can immediately attend and record attendance for their registered courses.
-- **UI/UX Pro Max Design Intelligence:** Built with the Google Fonts **Sora** typography, emerald accents, dark glassmorphism backdrops, and **zero browser-native popups** (`alert`/`confirm` replaced by custom animated dialogs).
-
 ---
 
 ## Technology Stack
