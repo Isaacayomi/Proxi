@@ -27,13 +27,18 @@ export default function StudentDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Fetch active sessions
+    // 1. Fetch active sessions (filter out inactive or already ended sessions)
     fetch("/api/attendance/sessions")
       .then((res) => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.sessions)) {
+          const now = Date.now();
           setActiveSessions(
-            data.sessions.filter((s: AttendanceSession) => s.status === "active"),
+            data.sessions.filter((s: AttendanceSession) => {
+              if (s.status !== "active") return false;
+              const endsAt = new Date(s.ends_at).getTime();
+              return endsAt > now;
+            }),
           );
         } else {
           setActiveSessions([]);
