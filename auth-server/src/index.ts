@@ -367,7 +367,7 @@ const checkQrRate = async (c: any, key: string, limit: number, windowMs: number)
 	const res = await c.env.DB.prepare(
 		"INSERT INTO auth_rates(key,started_at,count) VALUES(?,?,1) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN started_at<? THEN 1 ELSE count+1 END, started_at=CASE WHEN started_at<? THEN ? ELSE started_at END RETURNING count, started_at",
 	)
-		.bind(key, now, now - windowMs, now)
+		.bind(key, now, now - windowMs, now - windowMs, now)
 		.first() as any;
 	if ((res?.count ?? 0) > limit) {
 		const retryAfter = Math.max(1, Math.ceil(((res?.started_at ?? now) + windowMs - now) / 1000));
