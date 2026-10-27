@@ -1,0 +1,99 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sora: 'Sora', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: var(--font-sora);
+
+  /* Signature Proxi Emerald System */
+  --proxi-green: #008B68;
+  --proxi-green-hover: #007456;
+  --proxi-dark-green: #00563F;
+  --proxi-mint: #E7F6F0;
+  --proxi-mint-light: #F2FAF6;
+
+  /* Typography & Surface Neutrals */
+  --proxi-ink: #0F172A;
+  --proxi-muted: #64748B;
+  --proxi-subtle: #94A3B8;
+  --proxi-bg: #F8FAFC;
+  --proxi-surface: #FFFFFF;
+  --proxi-line: #E2E8F0;
+  --proxi-line-subtle: #F1F5F9;
+
+  /* Semantic Feedback */
+  --proxi-error: #DC2626;
+  --proxi-warning: #D97706;
+  --proxi-success: #059669;
+}
+
+body {
+  color: var(--proxi-ink);
+  background-color: var(--proxi-bg);
+  font-family: var(--font-sora);
+  min-height: 100vh;
+  margin: 0;
+  letter-spacing: -0.012em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom interactive touch targets and scrollbars */
+* {
+  border-color: var(--proxi-line);
+}
+
+::selection {
+  background-color: var(--proxi-mint);
+  color: var(--proxi-dark-green);
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+/* Subtle elevation card */
+.proxi-card {
+  background-color: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.proxi-card:hover {
+  border-color: rgba(0, 139, 104, 0.25);
+  box-shadow: 0 8px 24px -4px rgba(0, 139, 104, 0.06), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
+}
+
+/* Radar pulse animation for active geofences */
+@keyframes radar-ping {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.25;
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0.85;
+  }
+}
+
+.animate-radar {
+  animation: radar-ping 2.5s infinite ease-in-out;
+}
+
+/* Smooth Focus Ring */
+input:focus, select:focus, textarea:focus, button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 139, 104, 0.18);
+}
