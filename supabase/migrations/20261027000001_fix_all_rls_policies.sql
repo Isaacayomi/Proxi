@@ -110,3 +110,4 @@ CREATE POLICY "Allow audit logs management" ON public.attendance_audit_logs
     FOR ALL
     USING (true)
     WITH CHECK (true);
+

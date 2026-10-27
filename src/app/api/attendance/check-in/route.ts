@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           code: "INVALID_COORDINATES",
-          message: "Valid latitude, longitude, and accuracy readings are required.",
+          message:
+            "Valid latitude, longitude, and accuracy readings are required.",
         },
         { status: 400 },
       );
@@ -56,13 +57,16 @@ export async function POST(req: NextRequest) {
       }
 
       // Execute the atomic PostgreSQL RPC function
-      const { data, error } = await supabase.rpc("verify_and_record_attendance", {
-        p_session_id: sessionId,
-        p_student_id: studentId,
-        p_latitude: latitude,
-        p_longitude: longitude,
-        p_accuracy: accuracy,
-      });
+      const { data, error } = await supabase.rpc(
+        "verify_and_record_attendance",
+        {
+          p_session_id: sessionId,
+          p_student_id: studentId,
+          p_latitude: latitude,
+          p_longitude: longitude,
+          p_accuracy: accuracy,
+        },
+      );
 
       if (!error && data) {
         const status = data.success
@@ -84,7 +88,11 @@ export async function POST(req: NextRequest) {
       accuracy,
     );
 
-    const status = result.success ? 200 : result.code === "DUPLICATE_CHECKIN" ? 409 : 400;
+    const status = result.success
+      ? 200
+      : result.code === "DUPLICATE_CHECKIN"
+        ? 409
+        : 400;
 
     return NextResponse.json(result, { status });
   } catch (err: unknown) {
@@ -92,10 +100,12 @@ export async function POST(req: NextRequest) {
       {
         success: false,
         code: "SERVER_ERROR",
-        message: err instanceof Error ? err.message : "Internal server error during verification.",
+        message:
+          err instanceof Error
+            ? err.message
+            : "Internal server error during verification.",
       },
       { status: 500 },
     );
   }
 }
-
