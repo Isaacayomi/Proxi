@@ -8,7 +8,6 @@ import {
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  getLecturerSessions,
   getStudentAttendance,
 } from "../utils/storage";
 import { colors } from "../ui/design";
@@ -74,28 +73,18 @@ type Props = (LecturerProps | StudentProps) & {
 
 export default function AttendanceDashboard(props: Props) {
   const { role, showToast, onLogout, onEditProfile } = props;
-  const [sessions, setSessions] = useState<AttendanceSession[]>([]);
   const [studentAttendances, setStudentAttendances] = useState<StudentAttendance[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      if (role === "lecturer") {
-        if (props.load) {
-          const data = await props.load();
-          setSessions(data);
+      if (role === "student") {
+        const studentProps = props as StudentProps;
+        if (studentProps.load) {
+          setStudentAttendances(await studentProps.load());
         } else {
-          const data = await getLecturerSessions((props as LecturerProps).email);
-          setSessions(data);
-        }
-      } else {
-        if (props.load) {
-          const data = await props.load();
-          setStudentAttendances(data);
-        } else {
-          const data = await getStudentAttendance();
-          setStudentAttendances(data);
+          setStudentAttendances(await getStudentAttendance());
         }
       }
     } catch (e: any) {
@@ -123,18 +112,16 @@ export default function AttendanceDashboard(props: Props) {
           </Card.Actions>
         </Card>
 
-        <Card>
-          <Card.Title title={role === "lecturer" ? "Your Sessions" : "Your Attendance"} />
+        {role === "student" && <Card>
+          <Card.Title title="Your Attendance" />
           <Card.Content>
             {loading ? (
               <ActivityIndicator />
-            ) : role === "lecturer" ? (
-              sessions.length === 0 ? <Text>No sessions yet.</Text> : sessions.map((s) => <Text key={s.id}>{s.courseCode} - {s.courseName}</Text>)
             ) : (
               studentAttendances.length === 0 ? <Text>No attendance records.</Text> : studentAttendances.map((a) => <Text key={a.id}>{a.courseCode} - {a.status}</Text>)
             )}
           </Card.Content>
-        </Card>
+        </Card>}
       </ScrollView>
     </SafeAreaView>
   );

@@ -72,12 +72,12 @@ export default function StudentAttendanceScreen({
 
   return (
     <>
-      <View style={{ padding: 16 }}>
+      <View style={{ padding: 16, minHeight: 300, justifyContent: "center", alignItems: "center" }}>
         <Text variant="titleMedium" style={{ marginBottom: 8 }}>
           Scan QR to Check In
         </Text>
         {scanning ? (
-          <View style={{ height: 300 }}>
+          <View style={{ height: 300, width: "100%", maxWidth: 420 }}>
             <CameraView
               style={{ flex: 1 }}
               barcodeScannerSettings={{
@@ -90,7 +90,7 @@ export default function StudentAttendanceScreen({
             </Button>
           </View>
         ) : (
-          <Button mode="contained" onPress={startScan} disabled={submitting}>
+          <Button mode="contained" onPress={startScan} disabled={submitting} style={{ minWidth: 200 }}>
             Scan QR Code
           </Button>
         )}
