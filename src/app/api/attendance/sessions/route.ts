@@ -56,7 +56,15 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => null);
-    const { courseId, lecturerId, classroomId, radiusMeters, durationMinutes } = body || {};
+    const {
+      courseId,
+      lecturerId,
+      classroomId,
+      radiusMeters,
+      durationMinutes,
+      customLatitude,
+      customLongitude,
+    } = body || {};
 
     if (!courseId || !lecturerId || !classroomId) {
       return NextResponse.json(
@@ -106,6 +114,14 @@ export async function POST(req: NextRequest) {
         const duration = durationMinutes || 60;
         const endsAt = new Date(now.getTime() + duration * 60000);
         const radius = radiusMeters || room.default_radius_meters;
+        const finalLat =
+          typeof customLatitude === "number" && !isNaN(customLatitude)
+            ? customLatitude
+            : room.latitude;
+        const finalLon =
+          typeof customLongitude === "number" && !isNaN(customLongitude)
+            ? customLongitude
+            : room.longitude;
 
         const { data: session, error } = await supabase
           .from("attendance_sessions")
@@ -114,8 +130,8 @@ export async function POST(req: NextRequest) {
               course_id: courseId,
               lecturer_id: validLecturerId,
               classroom_id: classroomId,
-              latitude: room.latitude,
-              longitude: room.longitude,
+              latitude: finalLat,
+              longitude: finalLon,
               radius_meters: Math.min(500, Math.max(10, radius)),
               max_accuracy_meters: 300,
               starts_at: now.toISOString(),

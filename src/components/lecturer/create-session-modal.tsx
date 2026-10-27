@@ -29,10 +29,10 @@ interface CreateSessionModalProps {
 }
 
 const RADIUS_PRESETS = [
-  { label: "Small Lab", value: 30 },
-  { label: "Standard Hall", value: 50 },
-  { label: "Large Hall", value: 80 },
-  { label: "Auditorium", value: 120 },
+  { label: "Lab", value: 30 },
+  { label: "Standard Hall", value: 80 },
+  { label: "Auditorium", value: 150 },
+  { label: "Testing / Wide", value: 500 },
 ];
 
 const DURATION_PRESETS = [30, 45, 60, 90, 120];
@@ -51,10 +51,37 @@ export function CreateSessionModal({
 
   const [courseId, setCourseId] = useState("");
   const [classroomId, setClassroomId] = useState("");
-  const [radiusMeters, setRadiusMeters] = useState(50);
+  const [radiusMeters, setRadiusMeters] = useState(80);
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [useCurrentLocation, setUseCurrentLocation] = useState(false);
+  const [currentCoords, setCurrentCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [isCapturingLocation, setIsCapturingLocation] = useState(false);
+
+  const handleCaptureCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser.");
+      return;
+    }
+    setIsCapturingLocation(true);
+    setError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCurrentCoords({
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+        });
+        setUseCurrentLocation(true);
+        setIsCapturingLocation(false);
+      },
+      () => {
+        setError("Could not capture device location. Please allow browser location access.");
+        setIsCapturingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
 
   // Fetch courses and classrooms if not passed or empty
   useEffect(() => {
@@ -138,6 +165,8 @@ export function CreateSessionModal({
           lecturerId,
           radiusMeters: Number(radiusMeters),
           durationMinutes: Number(durationMinutes),
+          customLatitude: useCurrentLocation && currentCoords ? currentCoords.lat : undefined,
+          customLongitude: useCurrentLocation && currentCoords ? currentCoords.lon : undefined,
         }),
       });
 
@@ -273,25 +302,54 @@ export function CreateSessionModal({
             </div>
           </div>
 
-          {/* Venue GPS Preview Chip */}
-          {selectedClassroom && (
-            <div className="p-3.5 bg-gradient-to-r from-emerald-50/70 via-slate-50 to-teal-50/40 rounded-2xl border border-emerald-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
-                  <MapPin className="w-4 h-4" />
+          {/* Venue GPS Preview Chip & Live Location Pin */}
+          <div className="space-y-2">
+            {selectedClassroom && (
+              <div className="p-3.5 bg-gradient-to-r from-emerald-50/70 via-slate-50 to-teal-50/40 rounded-2xl border border-emerald-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                    <MapPin className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-900">{selectedClassroom.name}</span>
+                    <span className="text-slate-500 font-mono text-[11px] ml-2">
+                      {selectedClassroom.latitude.toFixed(5)}°, {selectedClassroom.longitude.toFixed(5)}°
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <span className="font-bold text-slate-900">{selectedClassroom.name}</span>
-                  <span className="text-slate-500 font-mono text-[11px] ml-2">
-                    {selectedClassroom.latitude.toFixed(5)}°, {selectedClassroom.longitude.toFixed(5)}°
-                  </span>
-                </div>
+                <Badge variant="success" size="sm">
+                  Default: {selectedClassroom.default_radius_meters}m
+                </Badge>
               </div>
-              <Badge variant="success" size="sm">
-                Default: {selectedClassroom.default_radius_meters}m
-              </Badge>
-            </div>
-          )}
+            )}
+
+            {/* Quick Live Location Pin for Testing / In-Venue Launch */}
+            {useCurrentLocation && currentCoords ? (
+              <div className="p-3 bg-emerald-100/80 rounded-xl border border-emerald-300 flex items-center justify-between text-xs font-sans shadow-xs">
+                <span className="font-bold text-emerald-950 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                  Anchored to your device GPS ({currentCoords.lat.toFixed(5)}°, {currentCoords.lon.toFixed(5)}°)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setUseCurrentLocation(false)}
+                  className="text-[11px] font-bold text-emerald-800 underline hover:text-emerald-950 ml-2 shrink-0"
+                >
+                  Use Venue Coords
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleCaptureCurrentLocation}
+                disabled={isCapturingLocation}
+                className="w-full py-2 px-3 rounded-xl border border-dashed border-emerald-400 bg-emerald-50/50 hover:bg-emerald-50 text-emerald-900 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              >
+                <Compass className={`w-3.5 h-3.5 text-emerald-600 ${isCapturingLocation ? "animate-spin" : ""}`} />
+                {isCapturingLocation ? "Acquiring your current GPS..." : "📍 Anchor geofence to my device's current location (Recommended for testing)"}
+              </button>
+            )}
+          </div>
 
           {/* Allowed Radius Configuration */}
           <div className="space-y-3 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
@@ -312,8 +370,8 @@ export function CreateSessionModal({
             <input
               type="range"
               min="10"
-              max="200"
-              step="5"
+              max="500"
+              step="10"
               value={radiusMeters}
               onChange={(e) => setRadiusMeters(Number(e.target.value))}
               className="w-full accent-emerald-600 cursor-pointer h-2 bg-slate-200 rounded-lg"
