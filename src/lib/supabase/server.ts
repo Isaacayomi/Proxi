@@ -15,10 +15,23 @@ function isValidSupabaseKey(k?: string): boolean {
 }
 
 export function getSupabaseServerClient(): SupabaseClient | null {
-  const url = sanitize(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const url = sanitize(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,
+  );
 
-  const rawServiceKey = sanitize(process.env.SUPABASE_SERVICE_ROLE_KEY);
-  const rawAnonKey = sanitize(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const rawServiceKey = sanitize(
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY,
+  );
+
+  // Check both NEXT_PUBLIC_SUPABASE_ANON_KEY and Vercel's injected SUPABASE_ANON_KEY
+  // Prefer the official JWT format (starting with 'ey')
+  const envAnon = sanitize(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const vercelAnon = sanitize(process.env.SUPABASE_ANON_KEY);
+  const rawAnonKey = vercelAnon.startsWith("ey")
+    ? vercelAnon
+    : envAnon.startsWith("ey")
+      ? envAnon
+      : envAnon || vercelAnon;
 
   const key = isValidSupabaseKey(rawServiceKey)
     ? rawServiceKey

@@ -8,8 +8,17 @@ function sanitize(val?: string): string {
 }
 
 export function getSupabaseBrowserClient(): SupabaseClient | null {
-  const supabaseUrl = sanitize(process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const supabaseAnonKey = sanitize(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const supabaseUrl = sanitize(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,
+  );
+
+  const envAnon = sanitize(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const vercelAnon = sanitize(process.env.SUPABASE_ANON_KEY);
+  const supabaseAnonKey = vercelAnon.startsWith("ey")
+    ? vercelAnon
+    : envAnon.startsWith("ey")
+      ? envAnon
+      : envAnon || vercelAnon;
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return null;
