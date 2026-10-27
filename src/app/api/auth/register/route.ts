@@ -35,17 +35,49 @@ export async function POST(req: NextRequest) {
 
     if (supabase) {
       // 1. Create or get user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: cleanEmail,
-        password: password,
-        email_confirm: true,
-        user_metadata: {
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          matric_number: cleanMatric,
-          role: cleanRole,
-        },
-      });
+      let authData: any = null;
+      let authError: any = null;
+
+      try {
+        const adminRes = await supabase.auth.admin.createUser({
+          email: cleanEmail,
+          password: password,
+          email_confirm: true,
+          user_metadata: {
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+            matric_number: cleanMatric,
+            role: cleanRole,
+          },
+        });
+        authData = adminRes.data;
+        authError = adminRes.error;
+      } catch (err: any) {
+        authError = err;
+      }
+
+      // If admin method was rejected with "User not allowed" (e.g. if client lacks service_role), fall back to standard auth.signUp
+      if (
+        authError &&
+        (authError.message?.toLowerCase().includes("not allowed") ||
+          authError.status === 403 ||
+          authError.status === 401)
+      ) {
+        const signUpRes = await supabase.auth.signUp({
+          email: cleanEmail,
+          password: password,
+          options: {
+            data: {
+              first_name: firstName.trim(),
+              last_name: lastName.trim(),
+              matric_number: cleanMatric,
+              role: cleanRole,
+            },
+          },
+        });
+        authData = signUpRes.data;
+        authError = signUpRes.error;
+      }
 
       if (authError && !authError.message.includes("already")) {
         return NextResponse.json(
