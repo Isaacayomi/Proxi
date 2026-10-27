@@ -141,17 +141,17 @@ BEGIN
         );
     END IF;
 
-    -- 6. Verify reported GPS accuracy threshold
-    IF p_accuracy > v_session.max_accuracy_meters THEN
+    -- 6. Verify reported GPS accuracy threshold (supporting indoor environments up to 300m)
+    IF p_accuracy > GREATEST(v_session.max_accuracy_meters, 300) THEN
         INSERT INTO public.attendance_audit_logs (session_id, student_id, outcome, details)
-        VALUES (p_session_id, p_student_id, 'rejected_accuracy', format('Accuracy %s m exceeds threshold %s m', p_accuracy, v_session.max_accuracy_meters));
+        VALUES (p_session_id, p_student_id, 'rejected_accuracy', format('Accuracy %s m exceeds threshold %s m', p_accuracy, GREATEST(v_session.max_accuracy_meters, 300)));
         
         RETURN jsonb_build_object(
             'success', false,
             'code', 'INACCURATE_LOCATION',
-            'message', format('Location accuracy (±%s m) is insufficient. Required threshold is ±%s m.', ROUND(p_accuracy::numeric, 1), v_session.max_accuracy_meters),
+            'message', format('Your GPS location accuracy is insufficient (±%s m). Move closer to a window or ensure high-accuracy location is enabled.', ROUND(p_accuracy::numeric, 1)),
             'accuracy_meters', p_accuracy,
-            'required_accuracy_meters', v_session.max_accuracy_meters
+            'required_accuracy_meters', GREATEST(v_session.max_accuracy_meters, 300)
         );
     END IF;
 
@@ -215,8 +215,12 @@ $$;
 -- Grant execution to public / authenticated users
 GRANT EXECUTE ON FUNCTION public.verify_and_record_attendance(UUID, UUID, DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION) TO anon, authenticated, service_role;
 
--- 3. Automatically close expired sessions
+-- 3. Automatically close expired sessions and set indoor tolerance
 UPDATE public.attendance_sessions
 SET status = 'ended'
 WHERE status = 'active' AND ends_at < NOW();
+
+UPDATE public.attendance_sessions
+SET max_accuracy_meters = 300
+WHERE max_accuracy_meters < 300;
 

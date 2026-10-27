@@ -172,7 +172,7 @@ export async function POST(req: NextRequest) {
             { latitude: sessionData.latitude, longitude: sessionData.longitude },
             sessionData.radius_meters,
             accuracy,
-            sessionData.max_accuracy_meters,
+            Math.max(sessionData.max_accuracy_meters || 50, 300),
           );
 
           if (!evalResult.accuracyAcceptable) {

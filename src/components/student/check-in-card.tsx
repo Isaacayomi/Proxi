@@ -51,75 +51,113 @@ export function CheckInCard({
     }
 
     setIsLocating(true);
-    setLocationStatus("Acquiring high-precision device GPS...");
+    setLocationStatus("Acquiring GPS fix (engaging satellite sensors)...");
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude, accuracy } = position.coords;
+    let bestCoords: GeolocationCoordinates | null = null;
+    let watchId: number | null = null;
+    let submitted = false;
+
+    const finalizeCheckIn = async (coords: GeolocationCoordinates) => {
+      if (submitted) return;
+      submitted = true;
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+
+      const { latitude, longitude, accuracy } = coords;
+      setLocationStatus(
+        `GPS acquired (±${accuracy.toFixed(1)}m). Validating geofence server-side...`,
+      );
+
+      try {
+        const res = await fetch("/api/attendance/check-in", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: session.id,
+            studentId,
+            latitude,
+            longitude,
+            accuracy,
+          }),
+        });
+
+        const data: VerificationResult = await res.json();
+        setResult(data);
+
+        if (data.success) {
+          onSuccess?.();
+        }
+      } catch {
+        setErrorMsg(
+          "Network error connecting to verification server. Please ensure you are online and retry.",
+        );
+      } finally {
+        setIsLocating(false);
+        setLocationStatus(null);
+      }
+    };
+
+    // Watch position to refine accuracy across multiple satellite fixes
+    watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const acc = pos.coords.accuracy;
+        if (!bestCoords || acc < bestCoords.accuracy) {
+          bestCoords = pos.coords;
+        }
+
         setLocationStatus(
-          `GPS fixed (±${accuracy.toFixed(1)}m). Validating geofence server-side...`,
+          `Refining GPS lock... accuracy ±${acc.toFixed(0)}m`,
         );
 
-        try {
-          const res = await fetch("/api/attendance/check-in", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sessionId: session.id,
-              studentId,
-              latitude,
-              longitude,
-              accuracy,
-            }),
-          });
-
-          const data: VerificationResult = await res.json();
-          setResult(data);
-
-          if (data.success) {
-            onSuccess?.();
-          }
-        } catch {
-          setErrorMsg(
-            "Network error connecting to verification server. Please ensure you are online and retry.",
-          );
-        } finally {
-          setIsLocating(false);
-          setLocationStatus(null);
+        // If sharp precision (under 40m) achieved, submit immediately
+        if (acc <= 40) {
+          finalizeCheckIn(pos.coords);
         }
       },
       (geoError) => {
-        setIsLocating(false);
-        setLocationStatus(null);
-        switch (geoError.code) {
-          case geoError.PERMISSION_DENIED:
-            setErrorMsg(
-              "Location access was denied. Please allow location permissions in your browser address bar to verify attendance.",
-            );
-            break;
-          case geoError.POSITION_UNAVAILABLE:
-            setErrorMsg(
-              "GPS position unavailable. Please ensure your device location/GPS is toggled ON.",
-            );
-            break;
-          case geoError.TIMEOUT:
-            setErrorMsg(
-              "Location acquisition timed out. Please step nearer to a window or outdoors and retry.",
-            );
-            break;
-          default:
-            setErrorMsg(
-              "An unexpected location error occurred. Please try again.",
-            );
-            break;
+        if (bestCoords) {
+          finalizeCheckIn(bestCoords);
+        } else {
+          setIsLocating(false);
+          setLocationStatus(null);
+          switch (geoError.code) {
+            case geoError.PERMISSION_DENIED:
+              setErrorMsg(
+                "Location access was denied. Please allow location permissions in your browser address bar to verify attendance.",
+              );
+              break;
+            case geoError.POSITION_UNAVAILABLE:
+              setErrorMsg(
+                "GPS position unavailable. Please ensure device location/GPS is toggled ON.",
+              );
+              break;
+            case geoError.TIMEOUT:
+              setErrorMsg(
+                "Location acquisition timed out. Please step nearer to a window or outdoors and retry.",
+              );
+              break;
+            default:
+              setErrorMsg(
+                "An unexpected location error occurred. Please try again.",
+              );
+              break;
+          }
         }
       },
       {
         enableHighAccuracy: true,
-        timeout: 15000,
+        timeout: 10000,
         maximumAge: 0,
       },
     );
+
+    // Timeout fallback: after 3.5 seconds, submit the best GPS reading acquired
+    setTimeout(() => {
+      if (!submitted && bestCoords) {
+        finalizeCheckIn(bestCoords);
+      }
+    }, 3500);
   };
 
   const isCheckedIn = result?.success || false;

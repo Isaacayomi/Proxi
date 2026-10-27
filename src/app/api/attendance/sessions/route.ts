@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
               latitude: room.latitude,
               longitude: room.longitude,
               radius_meters: Math.min(500, Math.max(10, radius)),
-              max_accuracy_meters: 50,
+              max_accuracy_meters: 300,
               starts_at: now.toISOString(),
               ends_at: endsAt.toISOString(),
               status: "active",
