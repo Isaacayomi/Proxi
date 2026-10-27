@@ -34,11 +34,30 @@ local.properties
 *.keystore
 !debug.keystore
 
+# Next.js & Build
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
 # node.js
-#
 **/node_modules/
 npm-debug.log
 yarn-error.log
+pnpm-debug.log
+
+# Testing coverage
+/coverage
+
+# Environment
+.env
+.env*.local
+.env.local
+.dev.vars
+.wrangler/
+
 
 # fastlane
 #
