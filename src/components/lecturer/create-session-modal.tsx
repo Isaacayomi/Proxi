@@ -33,7 +33,7 @@ const RADIUS_PRESETS = [
   { label: "Lab", value: 30 },
   { label: "Standard Hall", value: 80 },
   { label: "Auditorium", value: 150 },
-  { label: "Testing / Wide", value: 500 },
+  { label: "Campus Wide", value: 500 },
 ];
 
 const DURATION_PRESETS = [30, 45, 60, 90, 120];
@@ -396,10 +396,10 @@ export function CreateSessionModal({
                 type="button"
                 onClick={handleCaptureCurrentLocation}
                 disabled={isCapturingLocation}
-                className="w-full py-2 px-3 rounded-xl border border-dashed border-emerald-400 bg-emerald-50/50 hover:bg-emerald-50 text-emerald-900 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                className="w-full py-2.5 px-3 rounded-xl border border-dashed border-emerald-400 bg-emerald-50/50 hover:bg-emerald-50 text-emerald-900 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
                 <Compass className={`w-3.5 h-3.5 text-emerald-600 ${isCapturingLocation ? "animate-spin" : ""}`} />
-                {isCapturingLocation ? "Acquiring your current GPS..." : "📍 Anchor geofence to my device's current location (Recommended for testing)"}
+                {isCapturingLocation ? "Acquiring your current GPS..." : "📍 Anchor geofence to my device's current location"}
               </button>
             )}
           </div>
@@ -487,7 +487,7 @@ export function CreateSessionModal({
                 <span>You are currently {distanceFromVenue.toFixed(0)}m away from this venue</span>
               </div>
               <p className="text-amber-800 text-[11px] leading-relaxed">
-                Checking in from your current device or testing beside it will fail because the session radius is {radiusMeters}m. To test here:
+                Checking in from your current position will fall outside the boundary because the session radius is {radiusMeters}m. To anchor the session to your current spot:
               </p>
               <div className="flex flex-wrap items-center gap-2 pt-0.5">
                 <button
