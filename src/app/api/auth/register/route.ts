@@ -7,24 +7,35 @@ import { UserRole } from "@/types/database";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => null);
-    const { email, password, firstName, lastName, matricNumber, role } = body || {};
+    const { email, password, firstName, lastName, matricNumber, role } =
+      body || {};
 
     if (!email || !password || !firstName || !lastName) {
       return NextResponse.json(
-        { success: false, message: "Email, password, first name, and last name are required." },
+        {
+          success: false,
+          message: "Email, password, first name, and last name are required.",
+        },
         { status: 400 },
       );
     }
 
     const cleanEmail = email.trim().toLowerCase();
     const cleanRole: UserRole = role === "lecturer" ? "lecturer" : "student";
-    const cleanMatric = cleanRole === "student" && matricNumber ? matricNumber.trim().toUpperCase() : null;
+    const cleanMatric =
+      cleanRole === "student" && matricNumber
+        ? matricNumber.trim().toUpperCase()
+        : null;
 
     // Validate matric number for students
     if (cleanRole === "student") {
       if (!cleanMatric || !isValidMatricNumber(cleanMatric)) {
         return NextResponse.json(
-          { success: false, message: "Valid matriculation number required (format: ABC/2024/001)." },
+          {
+            success: false,
+            message:
+              "Valid matriculation number required (format: ABC/2024/001).",
+          },
           { status: 400 },
         );
       }
@@ -149,7 +160,11 @@ export async function POST(req: NextRequest) {
     };
 
     const res = NextResponse.json(
-      { success: true, message: "Account created successfully.", user: profile },
+      {
+        success: true,
+        message: "Account created successfully.",
+        user: profile,
+      },
       { status: 201 },
     );
 
@@ -162,9 +177,11 @@ export async function POST(req: NextRequest) {
     return res;
   } catch (err: unknown) {
     return NextResponse.json(
-      { success: false, message: err instanceof Error ? err.message : "Error creating account" },
+      {
+        success: false,
+        message: err instanceof Error ? err.message : "Error creating account",
+      },
       { status: 500 },
     );
   }
 }
-
