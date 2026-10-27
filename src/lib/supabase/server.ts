@@ -20,7 +20,11 @@ export function getSupabaseServerClient(): SupabaseClient | null {
   );
 
   const rawServiceKey = sanitize(
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY,
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.SUPABASE_SECRET_KEY ||
+      process.env.SERVICE_ROLE_KEY ||
+      process.env.SUPABASE_SERVICE_KEY ||
+      process.env.SUPABASE_KEY,
   );
 
   // Check both NEXT_PUBLIC_SUPABASE_ANON_KEY and Vercel's injected SUPABASE_ANON_KEY

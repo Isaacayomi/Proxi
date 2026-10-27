@@ -37,23 +37,35 @@ export async function POST(req: NextRequest) {
       }
 
       // 2. Fetch user profile from public.profiles
-      const { data: dbProfile, error: profileError } = await supabase
+      const { data: dbProfile } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", authData.user.id)
-        .single();
+        .maybeSingle();
 
-      if (profileError || !dbProfile) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: "User profile not found. Please contact administration.",
-          },
-          { status: 404 },
-        );
+      if (dbProfile) {
+        profile = dbProfile;
+      } else {
+        // Fallback to user_metadata stored in Supabase Auth
+        const meta = authData.user.user_metadata || {};
+        profile = {
+          id: authData.user.id,
+          email: authData.user.email || cleanEmail,
+          first_name: meta.first_name || "User",
+          last_name: meta.last_name || "",
+          matric_number: meta.matric_number || null,
+          role: meta.role || "student",
+          created_at: authData.user.created_at || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        // Best effort background upsert
+        try {
+          await supabase.from("profiles").upsert([profile]);
+        } catch {
+          // ignore RLS policy limitation
+        }
       }
-
-      profile = dbProfile;
     } else {
       // Local / In-memory fallback
       profile = db.getProfileByEmail(cleanEmail);

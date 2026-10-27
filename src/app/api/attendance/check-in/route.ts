@@ -43,12 +43,16 @@ export async function POST(req: NextRequest) {
         .maybeSingle();
 
       if (sessionData?.course_id) {
-        await supabase
-          .from("course_enrollments")
-          .upsert(
-            [{ course_id: sessionData.course_id, student_id: studentId }],
-            { onConflict: "course_id,student_id", ignoreDuplicates: true },
-          );
+        try {
+          await supabase
+            .from("course_enrollments")
+            .upsert(
+              [{ course_id: sessionData.course_id, student_id: studentId }],
+              { onConflict: "course_id,student_id", ignoreDuplicates: true },
+            );
+        } catch {
+          // Ignore auto-enrollment error, proceed to verification RPC
+        }
       }
 
       // Execute the atomic PostgreSQL RPC function
