@@ -216,8 +216,12 @@ export default function LecturerAttendanceScreen({
             <Card.Title
               title={`${session.course_code} - ${session.course_name}`}
               subtitle={`${session.record_count} marked · ${session.status}`}
-              onPress={() => void openSession(session.id)}
             />
+            <Card.Actions>
+              <Button onPress={() => void openSession(session.id)}>
+                {selectedSessionId === session.id ? "Hide attendance" : "View attendance"}
+              </Button>
+            </Card.Actions>
             {selectedSessionId === session.id && (
               <Card.Content>
                 {recordsLoading ? <ActivityIndicator /> : recordsError ? (

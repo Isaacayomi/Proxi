@@ -60,6 +60,7 @@ type StudentProps = {
 };
 
 type Props = (LecturerProps | StudentProps) & {
+  refreshTrigger?: number;
   saveAttendanceSession?: (session: {
     sessionId: string;
     lecturerEmail: string;
@@ -72,7 +73,7 @@ type Props = (LecturerProps | StudentProps) & {
 };
 
 export default function AttendanceDashboard(props: Props) {
-  const { role, showToast, onLogout, onEditProfile } = props;
+  const { role, showToast, onLogout, onEditProfile, refreshTrigger } = props;
   const [studentAttendances, setStudentAttendances] = useState<StudentAttendance[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -96,7 +97,7 @@ export default function AttendanceDashboard(props: Props) {
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, [loadData, refreshTrigger]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["bottom", "left", "right"]}>

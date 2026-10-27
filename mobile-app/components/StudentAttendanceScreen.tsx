@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from "react";
-import AttendanceDashboard from "./AttendanceDashboard";
-import { submitAttendanceQR } from "../utils/api";
+import AttendanceDashboard, { StudentAttendance } from "./AttendanceDashboard";
+import { fetchAttendanceRecords, submitAttendanceQR } from "../utils/api";
 import { View } from "react-native";
 import { Button, Text } from "react-native-paper";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -28,10 +28,21 @@ export default function StudentAttendanceScreen({
   const [permission, requestPermission] = useCameraPermissions();
   const [submitting, setSubmitting] = useState(false);
   const [scanned, setScanned] = useState(false);
+  const [attendanceRefresh, setAttendanceRefresh] = useState(0);
 
   const load = useCallback(
-    () => fetchStudentAttendances(),
-    [fetchStudentAttendances],
+    async (): Promise<StudentAttendance[]> => {
+      const rows = await fetchAttendanceRecords(token);
+      return rows.map((row: any) => ({
+        id: row.id,
+        courseCode: row.course_code,
+        courseName: row.course_name,
+        lecturerEmail: row.lecturer_email || "",
+        status: "present",
+        timestamp: row.submitted_at,
+      }));
+    },
+    [token],
   );
 
   const startScan = async () => {
@@ -57,6 +68,7 @@ export default function StudentAttendanceScreen({
     try {
       await submitAttendanceQR(token, data);
       showToast("Attendance submitted", "success");
+      setAttendanceRefresh((value) => value + 1);
       setScanning(false);
     } catch (e: any) {
       if (e?.status === 409) {
@@ -100,6 +112,7 @@ export default function StudentAttendanceScreen({
         name={studentName}
         matricNumber={matricNumber}
         load={load}
+        refreshTrigger={attendanceRefresh}
         showToast={showToast}
         onLogout={onLogout}
         onEditProfile={onEditProfile}

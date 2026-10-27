@@ -698,7 +698,7 @@ app.get("/api/attendance/records", async (c) => {
     return c.json({ success: false, message: "Unauthorized" }, 401);
   if (auth.user.role === "student") {
     const rows = await c.env.DB.prepare(
-      "SELECT r.id,r.session_id,r.submitted_at,s.course_code,s.course_name,s.ends_at FROM attendance_records r JOIN attendance_sessions s ON s.id=r.session_id WHERE r.student_id=? ORDER BY r.submitted_at DESC",
+			"SELECT r.id,r.session_id,r.submitted_at,s.course_code,s.course_name,s.ends_at,l.email AS lecturer_email FROM attendance_records r JOIN attendance_sessions s ON s.id=r.session_id JOIN users l ON l.id=s.lecturer_id WHERE r.student_id=? ORDER BY r.submitted_at DESC",
     )
       .bind(auth.user.id)
       .all();
