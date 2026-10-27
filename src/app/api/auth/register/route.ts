@@ -91,8 +91,11 @@ export async function POST(req: NextRequest) {
       }
 
       if (authError && !authError.message.includes("already")) {
+        const errorMsg = authError.message.toLowerCase().includes("rate")
+          ? "Supabase email rate limit exceeded. Please disable 'Confirm email' in Supabase Dashboard (Authentication -> Providers -> Email) to allow instant registration without email confirmations."
+          : authError.message;
         return NextResponse.json(
-          { success: false, message: authError.message },
+          { success: false, message: errorMsg },
           { status: 400 },
         );
       }
