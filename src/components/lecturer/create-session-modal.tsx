@@ -18,6 +18,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import Link from "next/link";
+import { calculateHaversineDistance } from "@/lib/geo/distance";
 
 interface CreateSessionModalProps {
   isOpen: boolean;
@@ -83,6 +84,21 @@ export function CreateSessionModal({
     );
   };
 
+  // Auto-detect current device GPS when modal opens to compute live distance to venue
+  useEffect(() => {
+    if (!isOpen || typeof navigator === "undefined" || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCurrentCoords({
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+        });
+      },
+      () => {},
+      { enableHighAccuracy: true, timeout: 6000 },
+    );
+  }, [isOpen]);
+
   // Fetch courses and classrooms if not passed or empty
   useEffect(() => {
     if (!isOpen) return;
@@ -131,6 +147,14 @@ export function CreateSessionModal({
 
   const selectedClassroom = classrooms.find((c) => c.id === classroomId);
   const selectedCourse = courses.find((c) => c.id === courseId);
+
+  const distanceFromVenue =
+    currentCoords && selectedClassroom
+      ? calculateHaversineDistance(
+          { latitude: currentCoords.lat, longitude: currentCoords.lon },
+          { latitude: selectedClassroom.latitude, longitude: selectedClassroom.longitude },
+        )
+      : null;
 
   const handleClassroomChange = (id: string) => {
     setClassroomId(id);
@@ -454,6 +478,36 @@ export function CreateSessionModal({
               ))}
             </div>
           </div>
+
+          {/* Distance Alert: if lecturer device is outside the venue */}
+          {distanceFromVenue !== null && distanceFromVenue > radiusMeters && !useCurrentLocation && (
+            <div className="p-3.5 bg-amber-50/95 border border-amber-300 rounded-2xl text-xs space-y-2 font-sans shadow-xs">
+              <div className="flex items-center gap-2 font-bold text-amber-950">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>You are currently {distanceFromVenue.toFixed(0)}m away from this venue</span>
+              </div>
+              <p className="text-amber-800 text-[11px] leading-relaxed">
+                Checking in from your current device or testing beside it will fail because the session radius is {radiusMeters}m. To test here:
+              </p>
+              <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => setUseCurrentLocation(true)}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                  Pin Venue to Here (0m)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRadiusMeters(Math.min(500, Math.ceil(distanceFromVenue + 50)))}
+                  className="px-3 py-1.5 rounded-lg bg-white border border-amber-300 text-amber-900 font-bold text-xs hover:bg-amber-100/60 transition-colors cursor-pointer"
+                >
+                  Expand Radius to {Math.min(500, Math.ceil(distanceFromVenue + 50))}m
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Modal Actions */}
           <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-4 border-t border-slate-100">
