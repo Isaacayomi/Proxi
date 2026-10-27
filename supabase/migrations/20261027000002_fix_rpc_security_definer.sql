@@ -5,7 +5,7 @@
 -- 3. Transition expired sessions to 'ended'
 -- ====================================================================
 
--- 1. Backfill any profiles created during earlier signup RLS restrictions
+-- 1. Safely backfill any missing profiles from auth.users (handling potential duplicate matric numbers)
 INSERT INTO public.profiles (
     id,
     email,
@@ -17,19 +17,24 @@ INSERT INTO public.profiles (
     updated_at
 )
 SELECT 
-    id,
-    COALESCE(email, 'user@proxi.app'),
-    COALESCE(raw_user_meta_data->>'first_name', 'Student'),
-    COALESCE(raw_user_meta_data->>'last_name', ''),
-    raw_user_meta_data->>'matric_number',
-    COALESCE(raw_user_meta_data->>'role', 'student'),
-    created_at,
+    u.id,
+    COALESCE(u.email, 'student@proxi.app'),
+    COALESCE(u.raw_user_meta_data->>'first_name', 'Student'),
+    COALESCE(u.raw_user_meta_data->>'last_name', ''),
+    CASE 
+        WHEN EXISTS (
+            SELECT 1 FROM public.profiles p 
+            WHERE p.matric_number = u.raw_user_meta_data->>'matric_number' 
+            AND p.id != u.id
+        ) THEN (u.raw_user_meta_data->>'matric_number') || '-' || SUBSTRING(u.id::text, 1, 4)
+        ELSE u.raw_user_meta_data->>'matric_number'
+    END,
+    COALESCE(u.raw_user_meta_data->>'role', 'student'),
+    u.created_at,
     NOW()
-FROM auth.users
-ON CONFLICT (id) DO UPDATE SET
-    matric_number = EXCLUDED.matric_number,
-    role = EXCLUDED.role,
-    updated_at = NOW();
+FROM auth.users u
+WHERE u.id NOT IN (SELECT id FROM public.profiles)
+ON CONFLICT (id) DO NOTHING;
 
 -- 2. Update verify_and_record_attendance to SECURITY DEFINER
 CREATE OR REPLACE FUNCTION public.verify_and_record_attendance(
@@ -214,3 +219,4 @@ GRANT EXECUTE ON FUNCTION public.verify_and_record_attendance(UUID, UUID, DOUBLE
 UPDATE public.attendance_sessions
 SET status = 'ended'
 WHERE status = 'active' AND ends_at < NOW();
+
