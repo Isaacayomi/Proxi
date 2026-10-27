@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Course, Profile } from "@/types/database";
 import { db } from "@/lib/db/store";
-import { CourseManager } from "@/components/admin/course-manager";
+import { CourseManager } from "@/components/lecturer/course-manager";
 
 export default function LecturerCoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);

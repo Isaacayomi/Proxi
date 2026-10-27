@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Classroom } from "@/types/database";
 import { db } from "@/lib/db/store";
-import { ClassroomManager } from "@/components/admin/classroom-manager";
+import { ClassroomManager } from "@/components/lecturer/classroom-manager";
 
 export default function LecturerClassroomsPage() {
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
