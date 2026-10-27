@@ -1,0 +1,118 @@
+import React from "react";
+import { describe, it, expect, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { Brand } from "@/components/brand";
+import { HistoryTable } from "@/components/student/history-table";
+import { CheckInCard } from "@/components/student/check-in-card";
+import { AttendanceSession, AttendanceRecord } from "@/types/database";
+
+describe("Brand Component", () => {
+  it("renders the proxi logo brand name", () => {
+    render(<Brand />);
+    expect(screen.getByText("proxi")).toBeInTheDocument();
+    expect(screen.getByText(".")).toBeInTheDocument();
+  });
+});
+
+describe("Student HistoryTable Component", () => {
+  it("renders empty state when no records exist", () => {
+    render(<HistoryTable records={[]} />);
+    expect(screen.getByText("No Attendance Records Yet")).toBeInTheDocument();
+  });
+
+  it("renders attendance rows with course code and distance", () => {
+    const mockRecord: AttendanceRecord = {
+      id: "rec-1",
+      session_id: "s-1",
+      student_id: "stu-1",
+      matric_number: "CSC/2024/001",
+      status: "present",
+      distance_meters: 18.5,
+      reported_accuracy_meters: 10,
+      rejection_reason: null,
+      submitted_at: "2026-10-27T10:00:00Z",
+      session: {
+        id: "s-1",
+        course_id: "c-1",
+        lecturer_id: "l-1",
+        classroom_id: "cr-1",
+        latitude: 7.51882,
+        longitude: 4.52735,
+        radius_meters: 60,
+        max_accuracy_meters: 50,
+        starts_at: "2026-10-27T09:00:00Z",
+        ends_at: "2026-10-27T11:00:00Z",
+        status: "active",
+        session_code: "CSC401",
+        created_at: "2026-10-27T09:00:00Z",
+        course: {
+          id: "c-1",
+          code: "CSC 401",
+          name: "Software Engineering Practice",
+          department: "CSE",
+          created_at: "",
+        },
+        classroom: {
+          id: "cr-1",
+          name: "Computer Building LT 1",
+          building: "Technology",
+          room_number: "101",
+          latitude: 7.51882,
+          longitude: 4.52735,
+          default_radius_meters: 60,
+          created_at: "",
+        },
+      },
+    };
+
+    render(<HistoryTable records={[mockRecord]} />);
+    expect(screen.getByText("CSC 401")).toBeInTheDocument();
+    expect(screen.getByText("Computer Building LT 1")).toBeInTheDocument();
+    expect(screen.getByText("18.5m from center")).toBeInTheDocument();
+    expect(screen.getByText("Present")).toBeInTheDocument();
+  });
+});
+
+describe("Student CheckInCard Component", () => {
+  const mockSession: AttendanceSession = {
+    id: "s-1",
+    course_id: "c-1",
+    lecturer_id: "l-1",
+    classroom_id: "cr-1",
+    latitude: 7.51882,
+    longitude: 4.52735,
+    radius_meters: 60,
+    max_accuracy_meters: 50,
+    starts_at: "2026-10-27T09:00:00Z",
+    ends_at: "2026-10-27T11:00:00Z",
+    status: "active",
+    session_code: "CSC401",
+    created_at: "2026-10-27T09:00:00Z",
+    course: {
+      id: "c-1",
+      code: "CSC 401",
+      name: "Software Engineering Practice",
+      department: "CSE",
+      created_at: "",
+    },
+    classroom: {
+      id: "cr-1",
+      name: "Computer Building LT 1",
+      building: "Technology",
+      room_number: "101",
+      latitude: 7.51882,
+      longitude: 4.52735,
+      default_radius_meters: 60,
+      created_at: "",
+    },
+  };
+
+  it("renders course details and verify button", () => {
+    render(<CheckInCard session={mockSession} studentId="stu-1" />);
+    expect(screen.getByText("CSC 401")).toBeInTheDocument();
+    expect(
+      screen.getByText("Software Engineering Practice"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Verify GPS & Check In")).toBeInTheDocument();
+  });
+});
