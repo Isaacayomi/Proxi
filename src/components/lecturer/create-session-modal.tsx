@@ -245,60 +245,89 @@ export function CreateSessionModal({
         <form onSubmit={handleSubmit} className="space-y-6 font-sans">
           {error && <Alert variant="error">{error}</Alert>}
 
-          {/* Selectors Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Course Selector */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
-                Select Course
-              </label>
-              <div className="relative">
-                <select
-                  value={courseId}
-                  onChange={(e) => setCourseId(e.target.value)}
-                  required
-                  className="w-full h-11 px-3.5 pr-8 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 font-semibold focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all shadow-xs appearance-none cursor-pointer"
-                >
-                  {courses.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.code} — {c.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                  </svg>
-                </div>
+          {/* Course Selector */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider font-mono flex items-center gap-1.5">
+              <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
+              Select Course
+            </label>
+            <div className="relative">
+              <select
+                value={courseId}
+                onChange={(e) => setCourseId(e.target.value)}
+                required
+                className="w-full h-11 px-3.5 pr-8 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 font-semibold focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all shadow-xs appearance-none cursor-pointer"
+              >
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.code} — {c.name}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                </svg>
               </div>
             </div>
+          </div>
 
-            {/* Classroom Venue Selector */}
-            <div className="space-y-2">
+          {/* Classroom Venue Selection Cards */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-700 uppercase tracking-wider font-mono flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5 text-emerald-600" />
-                Lecture Venue
+                Choose Classroom Venue ({classrooms.length} Available)
               </label>
-              <div className="relative">
-                <select
-                  value={classroomId}
-                  onChange={(e) => handleClassroomChange(e.target.value)}
-                  required
-                  className="w-full h-11 px-3.5 pr-8 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 font-semibold focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all shadow-xs appearance-none cursor-pointer"
-                >
-                  {classrooms.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} {c.building ? `(${c.building})` : ""}
-                    </option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                  </svg>
-                </div>
-              </div>
+              <Link
+                href="/lecturer/classrooms"
+                onClick={onClose}
+                className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
+              >
+                + Manage Venues
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-56 overflow-y-auto p-0.5">
+              {classrooms.map((c) => {
+                const isSelected = c.id === classroomId;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => handleClassroomChange(c.id)}
+                    className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all cursor-pointer relative ${
+                      isSelected
+                        ? "bg-emerald-50/90 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs"
+                        : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/60"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className={`text-xs font-bold ${isSelected ? "text-emerald-950" : "text-slate-900"}`}>
+                        {c.name}
+                      </span>
+                      {isSelected ? (
+                        <div className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        </div>
+                      ) : (
+                        <div className="w-3.5 h-3.5 rounded-full border border-slate-300 shrink-0" />
+                      )}
+                    </div>
+                    <span className="text-[11px] text-slate-500 truncate max-w-full mt-0.5">
+                      {c.building} {c.room_number ? `• ${c.room_number}` : ""}
+                    </span>
+                    <div className="flex items-center gap-2 mt-2 text-[10px] text-slate-400 font-mono">
+                      <span className="flex items-center gap-0.5">
+                        <MapPin className="w-2.5 h-2.5 text-slate-400" />
+                        {c.latitude.toFixed(4)}°, {c.longitude.toFixed(4)}°
+                      </span>
+                      <span>•</span>
+                      <span className="text-emerald-700 font-semibold">{c.default_radius_meters || 50}m radius</span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
