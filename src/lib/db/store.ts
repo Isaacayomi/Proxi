@@ -2,6 +2,7 @@ import {
   Profile,
   Classroom,
   Course,
+  FacultyVerificationKey,
   AttendanceSession,
   AttendanceRecord,
   VerificationResult,
@@ -33,9 +34,19 @@ class AttendanceStore {
   private enrollments = [...defaultEnrollments];
   private sessions = new Map<string, AttendanceSession>();
   private records = new Map<string, AttendanceRecord>();
+  private facultyKeys = new Map<string, FacultyVerificationKey>();
 
   constructor() {
-    // Clean initial state: no mock data or demo sessions
+    this.facultyKeys.set("fk-default", {
+      id: "fk-default",
+      key_code: "OAU-FACULTY-2026",
+      department: "Faculty of Technology",
+      note: "Default Institutional Master Key",
+      max_uses: null,
+      used_count: 0,
+      is_active: true,
+      created_at: new Date().toISOString(),
+    });
   }
 
   seedTestData() {
@@ -118,6 +129,76 @@ class AttendanceStore {
 
   listProfiles(): Profile[] {
     return Array.from(this.profiles.values());
+  }
+
+  // --- Faculty Verification Keys ---
+  listFacultyKeys(): FacultyVerificationKey[] {
+    return Array.from(this.facultyKeys.values()).sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
+  }
+
+  createFacultyKey(data: {
+    key_code?: string;
+    department?: string;
+    note?: string;
+    max_uses?: number | null;
+    created_by?: string;
+  }): FacultyVerificationKey {
+    const id = "fk-" + crypto.randomUUID();
+    const code = (
+      data.key_code?.trim() ||
+      "FAC-" +
+        Math.random().toString(36).substring(2, 6).toUpperCase() +
+        "-" +
+        Math.random().toString(36).substring(2, 6).toUpperCase()
+    ).toUpperCase();
+
+    const newKey: FacultyVerificationKey = {
+      id,
+      key_code: code,
+      department: data.department || "Computer Science & Engineering",
+      note: data.note || null,
+      max_uses: data.max_uses !== undefined ? data.max_uses : 1,
+      used_count: 0,
+      is_active: true,
+      created_by: data.created_by || null,
+      created_at: new Date().toISOString(),
+    };
+    this.facultyKeys.set(id, newKey);
+    return newKey;
+  }
+
+  revokeFacultyKey(id: string): boolean {
+    const key = this.facultyKeys.get(id);
+    if (!key) return false;
+    key.is_active = false;
+    return true;
+  }
+
+  validateAndConsumeFacultyKey(code: string): { valid: boolean; reason?: string } {
+    const cleanCode = code.trim().toUpperCase();
+    for (const key of this.facultyKeys.values()) {
+      if (key.key_code === cleanCode) {
+        if (!key.is_active) {
+          return { valid: false, reason: "This verification key has been revoked." };
+        }
+        if (
+          key.max_uses !== null &&
+          key.max_uses !== undefined &&
+          key.used_count >= key.max_uses
+        ) {
+          return {
+            valid: false,
+            reason: "This verification key has reached its maximum usage limit.",
+          };
+        }
+        key.used_count += 1;
+        return { valid: true };
+      }
+    }
+    return { valid: false, reason: "Verification key not recognized." };
   }
 
   // --- Classrooms ---

@@ -21,3 +21,4 @@ CREATE INDEX IF NOT EXISTS idx_profiles_staff_id ON public.profiles(staff_id);
 UPDATE public.profiles
 SET is_verified = TRUE, verified_at = NOW()
 WHERE role = 'lecturer' AND is_verified IS NOT TRUE;
+

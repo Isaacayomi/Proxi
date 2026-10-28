@@ -16,8 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SessionMonitor } from "@/components/lecturer/session-monitor";
 import { CreateSessionModal } from "@/components/lecturer/create-session-modal";
+import { FacultyKeysModal } from "@/components/lecturer/faculty-keys-modal";
 import { formatTime, formatDateTime } from "@/lib/utils";
-import { Compass, Plus, Users, MapPin, Clock, BookOpen, Building2, ArrowRight, ShieldCheck } from "lucide-react";
+import { Compass, Plus, Users, MapPin, Clock, BookOpen, Building2, ArrowRight, ShieldCheck, Key } from "lucide-react";
 
 export default function LecturerDashboardPage() {
   const { user } = useAuth();
@@ -27,6 +28,7 @@ export default function LecturerDashboardPage() {
   const [assignedCourses, setAssignedCourses] = useState<Course[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isKeysModalOpen, setIsKeysModalOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -101,6 +103,15 @@ export default function LecturerDashboardPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsKeysModalOpen(true)}
+            className="border-emerald-200 text-emerald-800 hover:bg-emerald-50"
+          >
+            <Key className="w-3.5 h-3.5 text-emerald-600" />
+            Faculty Keys
+          </Button>
           <Link href="/lecturer/classrooms">
             <Button variant="outline" size="sm">
               <Building2 className="w-3.5 h-3.5 text-slate-500" />
@@ -271,6 +282,13 @@ export default function LecturerDashboardPage() {
         onSessionCreated={() => {
           setRefreshKey((k) => k + 1);
         }}
+      />
+
+      {/* Modal for Generating & Managing Faculty Verification Keys */}
+      <FacultyKeysModal
+        isOpen={isKeysModalOpen}
+        onClose={() => setIsKeysModalOpen(false)}
+        currentUserId={user?.id}
       />
     </div>
   );

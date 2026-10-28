@@ -8,6 +8,7 @@ import {
 } from "@/lib/auth/roles";
 import { generateAttendanceCsv, generateAttendanceFilename } from "@/lib/utils";
 import { AttendanceRecord } from "@/types/database";
+import { db } from "@/lib/db/store";
 
 describe("Role Authorization & Matric Number Validation", () => {
   it("infers 'student' role for @student.oauife.edu.ng institutional emails", () => {
@@ -108,5 +109,63 @@ describe("CSV Export Utilities", () => {
     expect(csv).toContain("PRESENT");
     expect(csv).toContain("14.5");
     expect(csv).toContain("12.0");
+  });
+});
+
+describe("Dynamic Faculty Verification Keys Management", () => {
+  it("initializes with default faculty master key", () => {
+    const keys = db.listFacultyKeys();
+    expect(keys.length).toBeGreaterThanOrEqual(1);
+    expect(keys.some((k) => k.key_code === "OAU-FACULTY-2026")).toBe(true);
+  });
+
+  it("creates custom faculty verification key with usage limits and department", () => {
+    const key = db.createFacultyKey({
+      key_code: "OAU-TEST-DEPT-2026",
+      department: "Civil Engineering",
+      note: "For testing new faculty",
+      max_uses: 2,
+      created_by: "u-lecturer-1",
+    });
+
+    expect(key.key_code).toBe("OAU-TEST-DEPT-2026");
+    expect(key.department).toBe("Civil Engineering");
+    expect(key.max_uses).toBe(2);
+    expect(key.used_count).toBe(0);
+    expect(key.is_active).toBe(true);
+  });
+
+  it("validates and tracks usage count accurately up to max uses", () => {
+    const key = db.createFacultyKey({
+      key_code: "SINGLE-USE-KEY",
+      max_uses: 1,
+    });
+
+    const firstUse = db.validateAndConsumeFacultyKey("SINGLE-USE-KEY");
+    expect(firstUse.valid).toBe(true);
+
+    const secondUse = db.validateAndConsumeFacultyKey("SINGLE-USE-KEY");
+    expect(secondUse.valid).toBe(false);
+    expect(secondUse.reason).toContain("maximum usage limit");
+  });
+
+  it("revokes faculty keys immediately and blocks subsequent usage", () => {
+    const key = db.createFacultyKey({
+      key_code: "REVOKE-TEST-KEY",
+      max_uses: 5,
+    });
+
+    const revoked = db.revokeFacultyKey(key.id);
+    expect(revoked).toBe(true);
+
+    const useAttempt = db.validateAndConsumeFacultyKey("REVOKE-TEST-KEY");
+    expect(useAttempt.valid).toBe(false);
+    expect(useAttempt.reason).toContain("revoked");
+  });
+
+  it("rejects non-existent keys", () => {
+    const res = db.validateAndConsumeFacultyKey("DOES-NOT-EXIST-CODE");
+    expect(res.valid).toBe(false);
+    expect(res.reason).toContain("not recognized");
   });
 });

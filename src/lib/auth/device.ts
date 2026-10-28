@@ -115,3 +115,4 @@ export function getDeviceSummary(): {
 
   return { platform, browser, deviceId };
 }
+

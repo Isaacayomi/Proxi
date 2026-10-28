@@ -59,13 +59,58 @@ export async function POST(req: NextRequest) {
     let verifiedAt: string | null = null;
 
     if (cleanRole === "lecturer") {
-      if (!isValidFacultyVerificationCode(staffVerificationCode)) {
+      let isKeyValid = false;
+      const cleanKeyCode = staffVerificationCode
+        ? staffVerificationCode.trim().toUpperCase()
+        : "";
+
+      const supabase = getSupabaseServerClient();
+      if (supabase && cleanKeyCode) {
+        try {
+          const { data: dbKey } = await supabase
+            .from("faculty_verification_keys")
+            .select("*")
+            .eq("key_code", cleanKeyCode)
+            .eq("is_active", true)
+            .maybeSingle();
+
+          if (dbKey) {
+            const notExpired =
+              !dbKey.expires_at ||
+              new Date(dbKey.expires_at).getTime() > Date.now();
+            const hasUses =
+              dbKey.max_uses === null || dbKey.used_count < dbKey.max_uses;
+            if (notExpired && hasUses) {
+              isKeyValid = true;
+              await supabase
+                .from("faculty_verification_keys")
+                .update({ used_count: dbKey.used_count + 1 })
+                .eq("id", dbKey.id);
+            }
+          }
+        } catch {
+          // ignore error
+        }
+      }
+
+      if (!isKeyValid && cleanKeyCode) {
+        const memoryCheck = db.validateAndConsumeFacultyKey(cleanKeyCode);
+        if (memoryCheck.valid) {
+          isKeyValid = true;
+        }
+      }
+
+      if (!isKeyValid) {
+        isKeyValid = isValidFacultyVerificationCode(staffVerificationCode);
+      }
+
+      if (!isKeyValid) {
         return NextResponse.json(
           {
             success: false,
             code: "INVALID_FACULTY_CODE",
             message:
-              "Invalid Faculty Verification Key. A valid departmental staff authorization code is required to register as academic staff.",
+              "Invalid or expired Faculty Verification Key. A valid departmental staff authorization code is required to register as academic staff.",
           },
           { status: 403 },
         );

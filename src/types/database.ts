@@ -59,6 +59,19 @@ export interface CourseEnrollment {
   enrolled_at: string;
 }
 
+export interface FacultyVerificationKey {
+  id: string;
+  key_code: string;
+  created_by?: string | null;
+  department: string;
+  note?: string | null;
+  max_uses?: number | null;
+  used_count: number;
+  is_active: boolean;
+  created_at: string;
+  expires_at?: string | null;
+}
+
 export interface AttendanceSession {
   id: string;
   course_id: string;
