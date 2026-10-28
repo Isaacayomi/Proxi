@@ -6,6 +6,7 @@ import { HistoryTable } from "@/components/student/history-table";
 import { CheckInCard } from "@/components/student/check-in-card";
 import { ToastProvider, useToast } from "@/components/ui/toast";
 import { Select } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { AttendanceSession, AttendanceRecord } from "@/types/database";
 
 describe("Brand Component", () => {
@@ -207,5 +208,24 @@ describe("Custom Select Component", () => {
 
     fireEvent.click(screen.getByText("Operating Systems"));
     expect(handleChange).toHaveBeenCalledWith("c-2");
+  });
+});
+
+describe("Input Component with Password Eye Toggle", () => {
+  it("renders a toggle button for password fields and toggles visibility", async () => {
+    const { fireEvent } = await import("@testing-library/react");
+    render(<Input type="password" placeholder="Enter password" />);
+    const input = screen.getByPlaceholderText("Enter password");
+    expect(input).toHaveAttribute("type", "password");
+
+    const toggleBtn = screen.getByLabelText("Show password");
+    expect(toggleBtn).toBeInTheDocument();
+
+    fireEvent.click(toggleBtn);
+    expect(input).toHaveAttribute("type", "text");
+    expect(screen.getByLabelText("Hide password")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("Hide password"));
+    expect(input).toHaveAttribute("type", "password");
   });
 });

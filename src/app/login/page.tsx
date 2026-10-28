@@ -45,13 +45,11 @@ export default function LoginPage() {
     const cleanEmail = email.trim().toLowerCase();
     if (!isValidInstitutionalEmail(cleanEmail)) {
       if (cleanEmail.includes("student")) {
-        setError(
-          "Invalid student email format. Student institutional emails must follow the customized format: initial.surname.deptYearSerial@student.oauife.edu.ng (e.g. a.alabi.swe2024001@student.oauife.edu.ng).",
-        );
+        setError("Invalid student email");
         return;
       }
       setError(
-        "Invalid institutional email. Students must use their customized @student.oauife.edu.ng address (e.g. a.alabi.swe2024001@student.oauife.edu.ng) and lecturers must use their @oauife.edu.ng address. Any other email is considered unauthorized.",
+        "Invalid institutional email. Students must use @student.oauife.edu.ng and lecturers must use @oauife.edu.ng.",
       );
       return;
     }
@@ -88,9 +86,7 @@ export default function LoginPage() {
 
     const cleanEmail = email.trim().toLowerCase();
     if (selectedRole === "student" && !isValidStudentEmail(cleanEmail)) {
-      setError(
-        "Invalid student email. Student emails must end with @student.oauife.edu.ng and follow the customized format: initial.surname.deptYearSerial@student.oauife.edu.ng (e.g. a.alabi.swe2024001@student.oauife.edu.ng).",
-      );
+      setError("Invalid student email");
       return;
     }
     if (selectedRole === "lecturer" && !isValidLecturerEmail(cleanEmail)) {

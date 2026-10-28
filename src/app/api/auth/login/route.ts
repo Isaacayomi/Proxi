@@ -31,8 +31,7 @@ export async function POST(req: NextRequest) {
           {
             success: false,
             code: "INVALID_STUDENT_EMAIL",
-            message:
-              "Invalid student email format. Student institutional emails must follow the customized format: initial.surname.deptYearSerial@student.oauife.edu.ng (e.g. a.alabi.swe2024001@student.oauife.edu.ng).",
+            message: "Invalid student email",
           },
           { status: 400 },
         );
