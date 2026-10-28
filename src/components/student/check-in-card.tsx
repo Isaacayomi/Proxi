@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
+import { useToast } from "@/components/ui/toast";
 import { formatTime } from "@/lib/utils";
 import {
   MapPin,
@@ -34,6 +35,7 @@ export function CheckInCard({
   studentId,
   onSuccess,
 }: CheckInCardProps) {
+  const toast = useToast();
   const [isLocating, setIsLocating] = useState(false);
   const [locationStatus, setLocationStatus] = useState<string | null>(null);
   const [result, setResult] = useState<VerificationResult | null>(null);
@@ -44,9 +46,10 @@ export function CheckInCard({
     setResult(null);
 
     if (!navigator.geolocation) {
-      setErrorMsg(
-        "Geolocation is not supported by your browser. Please use a modern browser on your mobile phone or laptop.",
-      );
+      const msg =
+        "Geolocation is not supported by your browser. Please use a modern browser on your mobile phone or laptop.";
+      setErrorMsg(msg);
+      toast.error("Location Not Supported", msg);
       return;
     }
 
@@ -86,12 +89,26 @@ export function CheckInCard({
         setResult(data);
 
         if (data.success) {
+          const distInfo =
+            data.distance_meters !== undefined && data.distance_meters !== null
+              ? ` (${data.distance_meters.toFixed(1)}m from center)`
+              : "";
+          toast.success(
+            "Attendance Confirmed! 🎉",
+            `Successfully checked into ${session.course?.code || "lecture"}${distInfo}.`,
+          );
           onSuccess?.();
+        } else {
+          toast.error(
+            "Check-In Verification Failed",
+            data.message || "Your current location falls outside the classroom radius.",
+          );
         }
       } catch {
-        setErrorMsg(
-          "Network error connecting to verification server. Please ensure you are online and retry.",
-        );
+        const netErr =
+          "Network error connecting to verification server. Please ensure you are online and retry.";
+        setErrorMsg(netErr);
+        toast.error("Connection Error", netErr);
       } finally {
         setIsLocating(false);
         setLocationStatus(null);
@@ -122,26 +139,34 @@ export function CheckInCard({
           setIsLocating(false);
           setLocationStatus(null);
           switch (geoError.code) {
-            case geoError.PERMISSION_DENIED:
-              setErrorMsg(
-                "Location access was denied. Please allow location permissions in your browser address bar to verify attendance.",
-              );
+            case geoError.PERMISSION_DENIED: {
+              const msg =
+                "Location access was denied. Please allow location permissions in your browser address bar to verify attendance.";
+              setErrorMsg(msg);
+              toast.error("Location Access Denied", msg);
               break;
-            case geoError.POSITION_UNAVAILABLE:
-              setErrorMsg(
-                "GPS position unavailable. Please ensure device location/GPS is toggled ON.",
-              );
+            }
+            case geoError.POSITION_UNAVAILABLE: {
+              const msg =
+                "GPS position unavailable. Please ensure device location/GPS is toggled ON.";
+              setErrorMsg(msg);
+              toast.error("GPS Unavailable", msg);
               break;
-            case geoError.TIMEOUT:
-              setErrorMsg(
-                "Location acquisition timed out. Please step nearer to a window or outdoors and retry.",
-              );
+            }
+            case geoError.TIMEOUT: {
+              const msg =
+                "Location acquisition timed out. Please step nearer to a window or outdoors and retry.";
+              setErrorMsg(msg);
+              toast.error("GPS Timeout", msg);
               break;
-            default:
-              setErrorMsg(
-                "An unexpected location error occurred. Please try again.",
-              );
+            }
+            default: {
+              const msg =
+                "An unexpected location error occurred. Please try again.";
+              setErrorMsg(msg);
+              toast.error("Location Error", msg);
               break;
+            }
           }
         }
       },

@@ -4,6 +4,7 @@ import { render, screen } from "@testing-library/react";
 import { Brand } from "@/components/brand";
 import { HistoryTable } from "@/components/student/history-table";
 import { CheckInCard } from "@/components/student/check-in-card";
+import { ToastProvider, useToast } from "@/components/ui/toast";
 import { AttendanceSession, AttendanceRecord } from "@/types/database";
 
 describe("Brand Component", () => {
@@ -114,5 +115,38 @@ describe("Student CheckInCard Component", () => {
       screen.getByText("Software Engineering Practice"),
     ).toBeInTheDocument();
     expect(screen.getByText("Verify GPS & Check In")).toBeInTheDocument();
+  });
+});
+
+describe("Toast System", () => {
+  function TestToastConsumer() {
+    const toast = useToast();
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() =>
+            toast.success("Attendance Confirmed! 🎉", "Checked into CSC 401")
+          }
+        >
+          Trigger Success Toast
+        </button>
+      </div>
+    );
+  }
+
+  it("renders toast when triggered by user action", async () => {
+    const { fireEvent } = await import("@testing-library/react");
+    render(
+      <ToastProvider>
+        <TestToastConsumer />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByText("Trigger Success Toast"));
+    expect(
+      await screen.findByText("Attendance Confirmed! 🎉"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Checked into CSC 401")).toBeInTheDocument();
   });
 });

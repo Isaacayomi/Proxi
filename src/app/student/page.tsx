@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth/auth-context";
 import { AttendanceSession, Course } from "@/types/database";
 import { CheckInCard } from "@/components/student/check-in-card";
+import { useToast } from "@/components/ui/toast";
 import {
   Card,
   CardContent,
@@ -25,6 +26,7 @@ import {
 
 export default function StudentDashboardPage() {
   const { user } = useAuth();
+  const toast = useToast();
   const studentId = user?.id || "";
 
   const [refreshKey, setRefreshKey] = useState(0);
@@ -97,10 +99,14 @@ export default function StudentDashboardPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast.success("Enrolled in Course! 📚", data.message || "You can now participate in attendance sessions for this course.");
         setRefreshKey((k) => k + 1);
         setCoursesTab("enrolled");
+      } else {
+        toast.error("Enrollment Failed", data.message || "Could not complete course registration.");
       }
     } catch (err) {
+      toast.error("Network Error", "Unable to enroll at this time. Please try again.");
       console.error("Failed to enroll in course:", err);
     } finally {
       setEnrollingCourseId(null);
@@ -118,9 +124,13 @@ export default function StudentDashboardPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast.info("Course Dropped", data.message || "You have unenrolled from this course.");
         setRefreshKey((k) => k + 1);
+      } else {
+        toast.error("Drop Course Failed", data.message || "Could not unenroll from course.");
       }
     } catch (err) {
+      toast.error("Network Error", "Unable to drop course at this time. Please try again.");
       console.error("Failed to unenroll from course:", err);
     } finally {
       setEnrollingCourseId(null);

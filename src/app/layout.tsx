@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth/auth-context";
+import { ToastProvider } from "@/components/ui/toast";
 import { Navigation } from "@/components/navigation";
 
 export const metadata: Metadata = {
@@ -42,24 +43,26 @@ export default function RootLayout({
         </div>
 
         <AuthProvider>
-          <Navigation />
-          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
-            {children}
-          </main>
-          <footer className="border-t border-proxi-line bg-white/80 backdrop-blur-sm py-8 text-center text-xs text-proxi-muted">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-2">
-              <p className="font-bold tracking-widest text-[11px] uppercase text-proxi-ink/80 flex items-center justify-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-proxi-green animate-pulse" />
-                proxi. • Proximity-Based Campus Attendance
-              </p>
-              <p className="text-proxi-muted text-[11px]">
-                Department of Computer Science & Engineering • Obafemi Awolowo University, Ile-Ife
-              </p>
-              <p className="text-[10px] text-gray-400">
-                Server-side Haversine verification • Sub-50m GPS filtering • Duplicate check-in prevention
-              </p>
-            </div>
-          </footer>
+          <ToastProvider>
+            <Navigation />
+            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
+              {children}
+            </main>
+            <footer className="border-t border-proxi-line bg-white/80 backdrop-blur-sm py-8 text-center text-xs text-proxi-muted">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-2">
+                <p className="font-bold tracking-widest text-[11px] uppercase text-proxi-ink/80 flex items-center justify-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-proxi-green animate-pulse" />
+                  proxi. • Proximity-Based Campus Attendance
+                </p>
+                <p className="text-proxi-muted text-[11px]">
+                  Department of Computer Science & Engineering • Obafemi Awolowo University, Ile-Ife
+                </p>
+                <p className="text-[10px] text-gray-400">
+                  Server-side Haversine verification • Sub-50m GPS filtering • Duplicate check-in prevention
+                </p>
+              </div>
+            </footer>
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>
