@@ -72,6 +72,8 @@ export interface AttendanceSession {
   course?: Course;
   classroom?: Classroom;
   record_count?: number;
+  has_checked_in?: boolean;
+  checked_in_at?: string | null;
 }
 
 export interface AttendanceRecord {

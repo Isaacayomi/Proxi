@@ -268,11 +268,21 @@ class AttendanceStore {
         const end = new Date(s.ends_at).getTime();
         return now >= start && now <= end;
       })
-      .map((s) => ({
-        ...s,
-        course: this.courses.get(s.course_id),
-        classroom: this.classrooms.get(s.classroom_id),
-      }));
+      .map((s) => {
+        const studentRecord = Array.from(this.records.values()).find(
+          (r) =>
+            r.session_id === s.id &&
+            r.student_id === studentId &&
+            r.status === "present",
+        );
+        return {
+          ...s,
+          course: this.courses.get(s.course_id),
+          classroom: this.classrooms.get(s.classroom_id),
+          has_checked_in: Boolean(studentRecord),
+          checked_in_at: studentRecord?.submitted_at || null,
+        };
+      });
   }
 
   createSession(data: {

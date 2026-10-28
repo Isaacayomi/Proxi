@@ -51,9 +51,29 @@ export async function GET(req: NextRequest) {
 
       const { data, error } = await query;
       if (!error && data) {
+        const checkedInMap = new Map<string, string>();
+        if (studentId && data.length > 0) {
+          const sessionIds = data.map((s: any) => s.id);
+          const { data: records } = await supabase
+            .from("attendance_records")
+            .select("session_id, submitted_at, status")
+            .eq("student_id", studentId)
+            .in("session_id", sessionIds);
+
+          if (records) {
+            for (const r of records) {
+              if (r.status === "present") {
+                checkedInMap.set(r.session_id, r.submitted_at);
+              }
+            }
+          }
+        }
+
         const mapped = data.map((s: any) => ({
           ...s,
           record_count: s.records?.[0]?.count || 0,
+          has_checked_in: checkedInMap.has(s.id),
+          checked_in_at: checkedInMap.get(s.id) || null,
         }));
         return NextResponse.json({ success: true, sessions: mapped });
       }

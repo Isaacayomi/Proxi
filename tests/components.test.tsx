@@ -116,6 +116,20 @@ describe("Student CheckInCard Component", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Verify GPS & Check In")).toBeInTheDocument();
   });
+
+  it("disables check-in button and shows verified status when student has already checked in", () => {
+    const checkedInSession: AttendanceSession = {
+      ...mockSession,
+      has_checked_in: true,
+      checked_in_at: "2026-10-28T09:05:00Z",
+    };
+    render(<CheckInCard session={checkedInSession} studentId="stu-1" />);
+    const button = screen.getByRole("button", { name: /verified present/i });
+    expect(button).toBeDisabled();
+    expect(
+      screen.getByText("Attendance Successfully Verified"),
+    ).toBeInTheDocument();
+  });
 });
 
 describe("Toast System", () => {

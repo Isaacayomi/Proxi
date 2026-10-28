@@ -40,8 +40,17 @@ export function CheckInCard({
   const [locationStatus, setLocationStatus] = useState<string | null>(null);
   const [result, setResult] = useState<VerificationResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [checkedInLocally, setCheckedInLocally] = useState(false);
+
+  const isCheckedIn =
+    Boolean(session.has_checked_in) ||
+    checkedInLocally ||
+    result?.success === true ||
+    result?.code === "DUPLICATE_CHECKIN";
 
   const handleCheckIn = () => {
+    if (isCheckedIn || isLocating) return;
+
     setErrorMsg(null);
     setResult(null);
 
@@ -88,14 +97,17 @@ export function CheckInCard({
         const data: VerificationResult = await res.json();
         setResult(data);
 
-        if (data.success) {
+        if (data.success || data.code === "DUPLICATE_CHECKIN") {
+          setCheckedInLocally(true);
           const distInfo =
             data.distance_meters !== undefined && data.distance_meters !== null
               ? ` (${data.distance_meters.toFixed(1)}m from center)`
               : "";
           toast.success(
             "Attendance Confirmed! 🎉",
-            `Successfully checked into ${session.course?.code || "lecture"}${distInfo}.`,
+            data.code === "DUPLICATE_CHECKIN"
+              ? "You are already recorded as present for this session."
+              : `Successfully checked into ${session.course?.code || "lecture"}${distInfo}.`,
           );
           onSuccess?.();
         } else {
@@ -185,8 +197,6 @@ export function CheckInCard({
     }, 3500);
   };
 
-  const isCheckedIn = result?.success || false;
-
   return (
     <Card className="border border-slate-200/90 shadow-card hover:border-emerald-300/80 hover:shadow-cardHover transition-all duration-200">
       <CardHeader className="pb-4">
@@ -196,12 +206,21 @@ export function CheckInCard({
               <span className="text-[11px] font-bold tracking-wider text-proxi-green uppercase font-mono">
                 {session.course?.code}
               </span>
-              <Badge variant="success" size="sm">
-                <span className="flex items-center gap-1">
-                  <Radio className="w-2.5 h-2.5 text-emerald-600 animate-pulse" />
-                  Active Session
-                </span>
-              </Badge>
+              {isCheckedIn ? (
+                <Badge variant="success" size="sm">
+                  <span className="flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    Verified Present
+                  </span>
+                </Badge>
+              ) : (
+                <Badge variant="success" size="sm">
+                  <span className="flex items-center gap-1">
+                    <Radio className="w-2.5 h-2.5 text-emerald-600 animate-pulse" />
+                    Active Session
+                  </span>
+                </Badge>
+              )}
             </div>
             <CardTitle>{session.course?.name}</CardTitle>
             <CardDescription className="flex items-center gap-1.5 mt-1 font-sans">
@@ -224,19 +243,32 @@ export function CheckInCard({
 
       <CardContent className="space-y-4 pt-4">
         {/* Verification Success Feedback */}
-        {result?.success && (
+        {isCheckedIn && (
           <Alert variant="success" title="Attendance Successfully Verified">
             <p>
-              Your physical presence was verified at{" "}
-              <strong className="font-mono">{result.distance_meters?.toFixed(1)}m</strong> from the
-              classroom center. Attendance permanently recorded at{" "}
-              {formatTime(result.submitted_at || new Date().toISOString())}.
+              {result?.distance_meters != null ? (
+                <>
+                  Your physical presence was verified at{" "}
+                  <strong className="font-mono">
+                    {result.distance_meters.toFixed(1)}m
+                  </strong>{" "}
+                  from the classroom center.{" "}
+                </>
+              ) : (
+                <>Your physical presence is verified for this lecture session. </>
+              )}
+              Attendance permanently recorded at{" "}
+              {formatTime(
+                result?.submitted_at ||
+                  session.checked_in_at ||
+                  new Date().toISOString(),
+              )}.
             </p>
           </Alert>
         )}
 
         {/* Verification Error Feedback */}
-        {result && !result.success && (
+        {!isCheckedIn && result && !result.success && (
           <Alert variant="error" title="Verification Unsuccessful">
             <p>{result.message}</p>
             {result.distance_meters != null && result.radius_meters != null && (
@@ -288,9 +320,14 @@ export function CheckInCard({
           isLoading={isLocating}
           disabled={isCheckedIn}
           variant={isCheckedIn ? "secondary" : "primary"}
+          className={
+            isCheckedIn
+              ? "opacity-90 bg-emerald-50 text-emerald-800 border border-emerald-300 pointer-events-none cursor-not-allowed select-none shadow-none font-bold"
+              : ""
+          }
         >
           {isCheckedIn ? (
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 text-emerald-800 font-bold">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               Verified Present ✓
             </span>
