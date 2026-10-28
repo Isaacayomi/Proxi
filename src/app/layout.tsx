@@ -9,7 +9,11 @@ export const metadata: Metadata = {
   description:
     "Proximity-based verified GPS classroom attendance management system for Obafemi Awolowo University faculty and students.",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    apple: "/apple-touch-icon.png",
   },
 };
 
