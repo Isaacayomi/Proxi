@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
         );
       }
       isVerified = true;
-      cleanStaffId = staffId ? staffId.trim().toUpperCase() : "OAU/CSE/FACULTY";
+      cleanStaffId = staffId ? staffId.trim().toUpperCase() : null;
       verifiedAt = new Date().toISOString();
     }
 

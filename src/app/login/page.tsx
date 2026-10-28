@@ -26,7 +26,6 @@ export default function LoginPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [matricNumber, setMatricNumber] = useState("");
-  const [staffId, setStaffId] = useState("");
   const [staffVerificationCode, setStaffVerificationCode] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
@@ -80,7 +79,6 @@ export default function LoginPage() {
           lastName: lastName.trim(),
           matricNumber: matricNumber ? matricNumber.trim().toUpperCase() : null,
           role: selectedRole,
-          staffId: staffId ? staffId.trim() : null,
           staffVerificationCode: staffVerificationCode
             ? staffVerificationCode.trim()
             : null,
@@ -313,20 +311,12 @@ export default function LoginPage() {
               {selectedRole === "lecturer" && (
                 <div className="space-y-3 pt-1">
                   <Input
-                    label="Staff ID / Employee Number"
-                    placeholder="e.g. OAU/CSE/042"
-                    value={staffId}
-                    onChange={(e) => setStaffId(e.target.value.toUpperCase())}
-                    hint="University academic staff credential"
-                    required
-                  />
-                  <Input
                     label="Faculty Verification Key"
                     type="password"
                     placeholder="Enter departmental authorization key"
                     value={staffVerificationCode}
                     onChange={(e) => setStaffVerificationCode(e.target.value)}
-                    hint="Departmental key (e.g. OAU-FACULTY-2026)"
+                    hint="Departmental or personal authorization key (e.g. OAU-FACULTY-2026)"
                     required
                   />
                 </div>
