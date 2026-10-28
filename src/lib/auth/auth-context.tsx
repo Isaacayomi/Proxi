@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: `u-${newRole}-demo`,
         email:
           newRole === "student"
-            ? "i.okunlola.swe2024003@student.oauife.edu.ng"
+            ? "a.alabi.swe2024001@student.oauife.edu.ng"
             : "lecturer@oauife.edu.ng",
         first_name: newRole.charAt(0).toUpperCase() + newRole.slice(1),
         last_name: "User",

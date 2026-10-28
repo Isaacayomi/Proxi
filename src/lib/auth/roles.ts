@@ -16,7 +16,7 @@ export function isValidMatricNumber(matric: string): boolean {
 /**
  * Strict OAU student institutional email format:
  * Pattern: <initial>.<surname>.<dept_code><year><number>@student.oauife.edu.ng
- * Example: "i.okunlola.swe2024003@student.oauife.edu.ng"
+ * Example: "a.alabi.swe2024001@student.oauife.edu.ng"
  */
 export const STUDENT_EMAIL_REGEX =
   /^[a-z]{1,2}\.[a-z]+(-[a-z]+)?\.[a-z]{2,5}\d{5,8}@student\.oauife\.edu\.ng$/i;

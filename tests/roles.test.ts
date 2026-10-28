@@ -27,9 +27,9 @@ describe("Role Authorization & Matric Number Validation", () => {
   });
 
   it("strictly validates customized student email format (initial.surname.deptYearSerial@student.oauife.edu.ng)", () => {
-    // Valid format matching OAU pattern: i.okunlola.swe2024003@student.oauife.edu.ng
-    expect(isValidStudentEmail("i.okunlola.swe2024003@student.oauife.edu.ng")).toBe(true);
-    expect(isValidStudentEmail("I.OKUNLOLA.SWE2024003@STUDENT.OAUIFE.EDU.NG")).toBe(true);
+    // Valid format matching OAU pattern: a.alabi.swe2024001@student.oauife.edu.ng
+    expect(isValidStudentEmail("a.alabi.swe2024001@student.oauife.edu.ng")).toBe(true);
+    expect(isValidStudentEmail("A.ALABI.SWE2024001@STUDENT.OAUIFE.EDU.NG")).toBe(true);
     expect(isValidStudentEmail("a.okonkwo.csc2024001@student.oauife.edu.ng")).toBe(true);
     expect(isValidStudentEmail("b.bello.eee2023123@student.oauife.edu.ng")).toBe(true);
     expect(isValidStudentEmail("o.alabi-smith.mee2022045@student.oauife.edu.ng")).toBe(true);
@@ -37,8 +37,8 @@ describe("Role Authorization & Matric Number Validation", () => {
     // False / Invalid formats
     expect(isValidStudentEmail("ade.b@student.oauife.edu.ng")).toBe(false);
     expect(isValidStudentEmail("student@student.oauife.edu.ng")).toBe(false);
-    expect(isValidStudentEmail("i.okunlola.swe2024003@oauife.edu.ng")).toBe(false); // wrong domain
-    expect(isValidStudentEmail("i.okunlola.swe2024003@gmail.com")).toBe(false); // external
+    expect(isValidStudentEmail("a.alabi.swe2024001@oauife.edu.ng")).toBe(false); // wrong domain
+    expect(isValidStudentEmail("a.alabi.swe2024001@gmail.com")).toBe(false); // external
     expect(isValidStudentEmail("")).toBe(false);
     expect(isValidStudentEmail(null)).toBe(false);
   });
@@ -51,14 +51,14 @@ describe("Role Authorization & Matric Number Validation", () => {
     // Any other domain is regarded false
     expect(isValidLecturerEmail("dr.smith@university.org")).toBe(false);
     expect(isValidLecturerEmail("lecturer@gmail.com")).toBe(false);
-    expect(isValidLecturerEmail("i.okunlola.swe2024003@student.oauife.edu.ng")).toBe(false);
+    expect(isValidLecturerEmail("a.alabi.swe2024001@student.oauife.edu.ng")).toBe(false);
     expect(isValidLecturerEmail("ade.b@student.oauife.edu.ng")).toBe(false);
     expect(isValidLecturerEmail("")).toBe(false);
     expect(isValidLecturerEmail(null)).toBe(false);
   });
 
   it("identifies valid institutional emails versus false emails", () => {
-    expect(isValidInstitutionalEmail("i.okunlola.swe2024003@student.oauife.edu.ng")).toBe(true);
+    expect(isValidInstitutionalEmail("a.alabi.swe2024001@student.oauife.edu.ng")).toBe(true);
     expect(isValidInstitutionalEmail("prof.adeyemi@oauife.edu.ng")).toBe(true);
 
     expect(isValidInstitutionalEmail("fake.student@gmail.com")).toBe(false);

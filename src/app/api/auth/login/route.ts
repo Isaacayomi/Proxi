@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
             success: false,
             code: "INVALID_STUDENT_EMAIL",
             message:
-              "Invalid student email format. Student institutional emails must follow the customized format: initial.surname.deptYearSerial@student.oauife.edu.ng (e.g. i.okunlola.swe2024003@student.oauife.edu.ng).",
+              "Invalid student email format. Student institutional emails must follow the customized format: initial.surname.deptYearSerial@student.oauife.edu.ng (e.g. a.alabi.swe2024001@student.oauife.edu.ng).",
           },
           { status: 400 },
         );
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
           success: false,
           code: "INVALID_INSTITUTIONAL_EMAIL",
           message:
-            "Unrecognized institutional email address. Students must use their customized @student.oauife.edu.ng address (e.g. i.okunlola.swe2024003@student.oauife.edu.ng) and lecturers must use their @oauife.edu.ng address. Any other email is considered false.",
+            "Unrecognized institutional email address. Students must use their customized @student.oauife.edu.ng address (e.g. a.alabi.swe2024001@student.oauife.edu.ng) and lecturers must use their @oauife.edu.ng address. Any other email is considered false.",
         },
         { status: 400 },
       );

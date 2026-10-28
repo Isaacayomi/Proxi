@@ -140,10 +140,10 @@ class AttendanceStore {
 
     this.profiles.set("u-student-2", {
       id: "u-student-2",
-      email: "i.okunlola.swe2024003@student.oauife.edu.ng",
-      first_name: "Isaac",
-      last_name: "Okunlola",
-      matric_number: "SWE/2024/003",
+      email: "a.alabi.swe2024001@student.oauife.edu.ng",
+      first_name: "Ayomide",
+      last_name: "Alabi",
+      matric_number: "SWE/2024/001",
       role: "student",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),

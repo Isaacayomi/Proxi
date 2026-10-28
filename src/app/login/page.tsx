@@ -46,12 +46,12 @@ export default function LoginPage() {
     if (!isValidInstitutionalEmail(cleanEmail)) {
       if (cleanEmail.includes("student")) {
         setError(
-          "Invalid student email format. Student institutional emails must follow the customized format: initial.surname.deptYearSerial@student.oauife.edu.ng (e.g. i.okunlola.swe2024003@student.oauife.edu.ng).",
+          "Invalid student email format. Student institutional emails must follow the customized format: initial.surname.deptYearSerial@student.oauife.edu.ng (e.g. a.alabi.swe2024001@student.oauife.edu.ng).",
         );
         return;
       }
       setError(
-        "Invalid institutional email. Students must use their customized @student.oauife.edu.ng address (e.g. i.okunlola.swe2024003@student.oauife.edu.ng) and lecturers must use their @oauife.edu.ng address. Any other email is considered unauthorized.",
+        "Invalid institutional email. Students must use their customized @student.oauife.edu.ng address (e.g. a.alabi.swe2024001@student.oauife.edu.ng) and lecturers must use their @oauife.edu.ng address. Any other email is considered unauthorized.",
       );
       return;
     }
@@ -89,7 +89,7 @@ export default function LoginPage() {
     const cleanEmail = email.trim().toLowerCase();
     if (selectedRole === "student" && !isValidStudentEmail(cleanEmail)) {
       setError(
-        "Invalid student email. Student emails must end with @student.oauife.edu.ng and follow the customized format: initial.surname.deptYearSerial@student.oauife.edu.ng (e.g. i.okunlola.swe2024003@student.oauife.edu.ng).",
+        "Invalid student email. Student emails must end with @student.oauife.edu.ng and follow the customized format: initial.surname.deptYearSerial@student.oauife.edu.ng (e.g. a.alabi.swe2024001@student.oauife.edu.ng).",
       );
       return;
     }
@@ -195,7 +195,7 @@ export default function LoginPage() {
             <form onSubmit={handleSignIn} className="space-y-4">
               <Input
                 label="Institutional Email Address"
-                placeholder="e.g. i.okunlola.swe2024003@student.oauife.edu.ng"
+                placeholder="e.g. a.alabi.swe2024001@student.oauife.edu.ng"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -320,7 +320,7 @@ export default function LoginPage() {
                 placeholder={
                   selectedRole === "lecturer"
                     ? "adeyemi@oauife.edu.ng"
-                    : "i.okunlola.swe2024003@student.oauife.edu.ng"
+                    : "a.alabi.swe2024001@student.oauife.edu.ng"
                 }
                 type="email"
                 value={email}
@@ -329,7 +329,7 @@ export default function LoginPage() {
                 hint={
                   selectedRole === "lecturer"
                     ? "Official faculty email ending with @oauife.edu.ng"
-                    : "Format: initial.surname.deptYearSerial@student.oauife.edu.ng (e.g. i.okunlola.swe2024003@student.oauife.edu.ng)"
+                    : "Format: initial.surname.deptYearSerial@student.oauife.edu.ng (e.g. a.alabi.swe2024001@student.oauife.edu.ng)"
                 }
                 required
               />

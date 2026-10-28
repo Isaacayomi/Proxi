@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
             success: false,
             code: "INVALID_STUDENT_EMAIL",
             message:
-              "Invalid student email. Student emails must end with @student.oauife.edu.ng and follow the customized format: initial.surname.deptYearSerial@student.oauife.edu.ng (e.g. i.okunlola.swe2024003@student.oauife.edu.ng). Any other email is considered unauthorized.",
+              "Invalid student email. Student emails must end with @student.oauife.edu.ng and follow the customized format: initial.surname.deptYearSerial@student.oauife.edu.ng (e.g. a.alabi.swe2024001@student.oauife.edu.ng). Any other email is considered unauthorized.",
           },
           { status: 400 },
         );
