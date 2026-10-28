@@ -78,3 +78,60 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    let id = searchParams.get("id");
+
+    if (!id) {
+      const body = await req.json().catch(() => null);
+      id = body?.id;
+    }
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, message: "Classroom ID is required." },
+        { status: 400 },
+      );
+    }
+
+    const supabase = getSupabaseServerClient();
+    if (supabase) {
+      const { data: sessions } = await supabase
+        .from("attendance_sessions")
+        .select("id")
+        .eq("classroom_id", id);
+
+      if (sessions && sessions.length > 0) {
+        const sessionIds = sessions.map((s: any) => s.id);
+        await supabase
+          .from("attendance_records")
+          .delete()
+          .in("session_id", sessionIds);
+        await supabase
+          .from("attendance_sessions")
+          .delete()
+          .eq("classroom_id", id);
+      }
+
+      await supabase.from("classrooms").delete().eq("id", id);
+    }
+
+    db.deleteClassroom(id);
+
+    return NextResponse.json({
+      success: true,
+      message: "Classroom venue deleted successfully.",
+    });
+  } catch (err: unknown) {
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          err instanceof Error ? err.message : "Error deleting classroom",
+      },
+      { status: 500 },
+    );
+  }
+}

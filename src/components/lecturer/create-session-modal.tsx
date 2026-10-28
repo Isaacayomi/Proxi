@@ -6,6 +6,7 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Select } from "@/components/ui/select";
 import {
   Compass,
   MapPin,
@@ -270,31 +271,20 @@ export function CreateSessionModal({
           {error && <Alert variant="error">{error}</Alert>}
 
           {/* Course Selector */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider font-mono flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
-              Select Course
-            </label>
-            <div className="relative">
-              <select
-                value={courseId}
-                onChange={(e) => setCourseId(e.target.value)}
-                required
-                className="w-full h-11 px-3.5 pr-8 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 font-semibold focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all shadow-xs appearance-none cursor-pointer"
-              >
-                {courses.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.code} — {c.name}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
-                <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                </svg>
-              </div>
-            </div>
-          </div>
+          <Select
+            label="Select Course"
+            icon={<BookOpen className="w-3.5 h-3.5 text-emerald-600" />}
+            value={courseId}
+            onChange={(val) => setCourseId(val)}
+            options={courses.map((c) => ({
+              value: c.id,
+              label: c.name,
+              badge: c.code,
+              subLabel: c.department,
+            }))}
+            placeholder="Choose an academic course..."
+            required
+          />
 
           {/* Classroom Venue Selection Cards */}
           <div className="space-y-2">

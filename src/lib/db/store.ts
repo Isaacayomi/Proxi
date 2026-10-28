@@ -138,7 +138,15 @@ class AttendanceStore {
   }
 
   deleteClassroom(id: string): boolean {
-    return this.classrooms.delete(id);
+    const deleted = this.classrooms.delete(id);
+    if (deleted) {
+      for (const [sessionId, session] of this.sessions.entries()) {
+        if (session.classroom_id === id) {
+          this.sessions.delete(sessionId);
+        }
+      }
+    }
+    return deleted;
   }
 
   // --- Courses ---
@@ -159,6 +167,22 @@ class AttendanceStore {
     };
     this.courses.set(id, course);
     return course;
+  }
+
+  deleteCourse(id: string): boolean {
+    const deleted = this.courses.delete(id);
+    if (deleted) {
+      this.courseLecturers = this.courseLecturers.filter(
+        (cl) => cl.course_id !== id,
+      );
+      this.enrollments = this.enrollments.filter((e) => e.course_id !== id);
+      for (const [sessionId, session] of this.sessions.entries()) {
+        if (session.course_id === id) {
+          this.sessions.delete(sessionId);
+        }
+      }
+    }
+    return deleted;
   }
 
   // --- Assignments & Enrollments ---

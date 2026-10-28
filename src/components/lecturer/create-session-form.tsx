@@ -5,7 +5,8 @@ import { Course, Classroom } from "@/types/database";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
-import { MapPin, Navigation, Compass, Clock, Radio } from "lucide-react";
+import { Select } from "@/components/ui/select";
+import { MapPin, Navigation, Compass, Clock, Radio, BookOpen, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CreateSessionFormProps {
@@ -114,42 +115,36 @@ export function CreateSessionForm({
           )}
 
           {/* Course Selector */}
-          <div className="space-y-1.5">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 font-sans">
-              Select Course
-            </label>
-            <select
-              value={courseId}
-              onChange={(e) => setCourseId(e.target.value)}
-              className="w-full px-4 py-2.5 min-h-[44px] text-sm rounded-xl border border-slate-200 bg-slate-50/50 text-proxi-ink focus:bg-white focus:outline-none focus:ring-2 focus:ring-proxi-green/20 focus:border-proxi-green font-sans transition-all"
-              required
-            >
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code} — {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            label="Select Course"
+            icon={<BookOpen className="w-3.5 h-3.5 text-emerald-600" />}
+            value={courseId}
+            onChange={(val) => setCourseId(val)}
+            options={courses.map((c) => ({
+              value: c.id,
+              label: c.name,
+              badge: c.code,
+              subLabel: c.department,
+            }))}
+            placeholder="Choose a course..."
+            required
+          />
 
           {/* Classroom Selector */}
-          <div className="space-y-1.5">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 font-sans">
-              Classroom & Center Coordinates
-            </label>
-            <select
-              value={classroomId}
-              onChange={(e) => handleClassroomChange(e.target.value)}
-              className="w-full px-4 py-2.5 min-h-[44px] text-sm rounded-xl border border-slate-200 bg-slate-50/50 text-proxi-ink focus:bg-white focus:outline-none focus:ring-2 focus:ring-proxi-green/20 focus:border-proxi-green font-sans transition-all"
-              required
-            >
-              {classrooms.map((room) => (
-                <option key={room.id} value={room.id}>
-                  {room.name} ({room.building})
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            label="Classroom Venue & Coordinates"
+            icon={<Building2 className="w-3.5 h-3.5 text-emerald-600" />}
+            value={classroomId}
+            onChange={(val) => handleClassroomChange(val)}
+            options={classrooms.map((room) => ({
+              value: room.id,
+              label: room.name,
+              badge: `${room.default_radius_meters}m`,
+              subLabel: `${room.building}${room.room_number ? ` • ${room.room_number}` : ""}`,
+            }))}
+            placeholder="Choose a venue..."
+            required
+          />
 
           {/* Classroom Coordinates Display */}
           {selectedClassroom && (

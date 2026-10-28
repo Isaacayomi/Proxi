@@ -5,6 +5,7 @@ import { Brand } from "@/components/brand";
 import { HistoryTable } from "@/components/student/history-table";
 import { CheckInCard } from "@/components/student/check-in-card";
 import { ToastProvider, useToast } from "@/components/ui/toast";
+import { Select } from "@/components/ui/select";
 import { AttendanceSession, AttendanceRecord } from "@/types/database";
 
 describe("Brand Component", () => {
@@ -162,5 +163,49 @@ describe("Toast System", () => {
       await screen.findByText("Attendance Confirmed! 🎉"),
     ).toBeInTheDocument();
     expect(screen.getByText("Checked into CSC 401")).toBeInTheDocument();
+  });
+});
+
+describe("Custom Select Component", () => {
+  it("renders with options, opens popover, and triggers onChange", async () => {
+    const { fireEvent } = await import("@testing-library/react");
+    const handleChange = vi.fn();
+    const options = [
+      {
+        value: "c-1",
+        label: "Software Engineering Practice",
+        badge: "CSC 401",
+        subLabel: "CSE",
+      },
+      {
+        value: "c-2",
+        label: "Operating Systems",
+        badge: "CSC 403",
+        subLabel: "CSE",
+      },
+    ];
+
+    render(
+      <Select
+        label="Select Course"
+        value="c-1"
+        onChange={handleChange}
+        options={options}
+      />,
+    );
+
+    expect(
+      screen.getByText("Software Engineering Practice"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("CSC 401")).toBeInTheDocument();
+
+    const trigger = screen.getByRole("button");
+    fireEvent.click(trigger);
+
+    expect(screen.getByText("Operating Systems")).toBeInTheDocument();
+    expect(screen.getByText("CSC 403")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Operating Systems"));
+    expect(handleChange).toHaveBeenCalledWith("c-2");
   });
 });

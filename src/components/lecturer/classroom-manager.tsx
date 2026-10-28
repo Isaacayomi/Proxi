@@ -13,13 +13,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Plus, Building2, Navigation, CheckCircle2 } from "lucide-react";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { useToast } from "@/components/ui/toast";
+import { MapPin, Plus, Trash2, Building2, Navigation, CheckCircle2 } from "lucide-react";
 
 interface ClassroomManagerProps {
   initialClassrooms: Classroom[];
 }
 
 export function ClassroomManager({ initialClassrooms }: ClassroomManagerProps) {
+  const toast = useToast();
   const [classrooms, setClassrooms] = useState<Classroom[]>(initialClassrooms);
   const [showAddForm, setShowAddForm] = useState(false);
   const [name, setName] = useState("");
@@ -30,6 +33,8 @@ export function ClassroomManager({ initialClassrooms }: ClassroomManagerProps) {
   const [radius, setRadius] = useState("50");
   const [isCapturing, setIsCapturing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [roomToDelete, setRoomToDelete] = useState<Classroom | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,7 +43,9 @@ export function ClassroomManager({ initialClassrooms }: ClassroomManagerProps) {
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
-      setError("Geolocation is not supported by your browser.");
+      const msg = "Geolocation is not supported by your browser.";
+      setError(msg);
+      toast.error("GPS Error", msg);
       return;
     }
     setIsCapturing(true);
@@ -48,9 +55,16 @@ export function ClassroomManager({ initialClassrooms }: ClassroomManagerProps) {
         setLatitude(pos.coords.latitude.toFixed(6));
         setLongitude(pos.coords.longitude.toFixed(6));
         setIsCapturing(false);
+        toast.info(
+          "GPS Coordinates Captured",
+          `Lat: ${pos.coords.latitude.toFixed(6)}, Lng: ${pos.coords.longitude.toFixed(6)}`,
+        );
       },
       () => {
-        setError("Unable to fetch current GPS coordinates. Please enter coordinates manually.");
+        const msg =
+          "Unable to fetch current GPS coordinates. Please ensure device location is enabled or enter manually.";
+        setError(msg);
+        toast.error("GPS Unavailable", msg);
         setIsCapturing(false);
       },
       { enableHighAccuracy: true, timeout: 10000 },
@@ -89,10 +103,46 @@ export function ClassroomManager({ initialClassrooms }: ClassroomManagerProps) {
       setLongitude("");
       setRadius("50");
       setShowAddForm(false);
+      toast.success(
+        "Venue Registered! 📍",
+        `${data.classroom.name} has been added to available venues.`,
+      );
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Error saving classroom");
+      const msg =
+        err instanceof Error ? err.message : "Error saving classroom";
+      setError(msg);
+      toast.error("Failed to Add Venue", msg);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteRoom = async () => {
+    if (!roomToDelete) return;
+    setIsDeleting(true);
+
+    try {
+      const res = await fetch(`/api/classrooms?id=${roomToDelete.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to delete classroom");
+      }
+
+      setClassrooms((prev) => prev.filter((r) => r.id !== roomToDelete.id));
+      toast.success(
+        "Venue Deleted",
+        `${roomToDelete.name} has been removed from campus venues.`,
+      );
+      setRoomToDelete(null);
+    } catch (err: unknown) {
+      toast.error(
+        "Delete Failed",
+        err instanceof Error ? err.message : "Error deleting classroom",
+      );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -221,35 +271,66 @@ export function ClassroomManager({ initialClassrooms }: ClassroomManagerProps) {
       )}
 
       {/* Classrooms Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {classrooms.map((room) => (
-          <Card key={room.id} className="border border-slate-200/90 shadow-card hover:border-emerald-300 transition-all">
-            <CardContent className="p-5 space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h4 className="font-bold text-proxi-ink text-sm font-sans tracking-tight">
-                    {room.name}
-                  </h4>
-                  <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5 font-sans">
-                    <Building2 className="w-3.5 h-3.5 text-proxi-green shrink-0" />
-                    <span>{room.building}{room.room_number ? ` • ${room.room_number}` : ""}</span>
-                  </p>
+      {classrooms.length === 0 ? (
+        <Card className="border-dashed border-slate-300">
+          <CardContent className="text-center py-12 text-xs text-slate-500 font-sans">
+            No classroom venues configured yet. Click &quot;Add Classroom&quot; to set up a lecture hall geofence.
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {classrooms.map((room) => (
+            <Card key={room.id} className="border border-slate-200/90 shadow-card hover:border-emerald-300 transition-all flex flex-col justify-between">
+              <CardContent className="p-5 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h4 className="font-bold text-proxi-ink text-sm font-sans tracking-tight">
+                      {room.name}
+                    </h4>
+                    <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5 font-sans">
+                      <Building2 className="w-3.5 h-3.5 text-proxi-green shrink-0" />
+                      <span>{room.building}{room.room_number ? ` • ${room.room_number}` : ""}</span>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="success" size="sm">
+                      {room.default_radius_meters}m
+                    </Badge>
+                    <button
+                      type="button"
+                      onClick={() => setRoomToDelete(room)}
+                      title={`Delete ${room.name}`}
+                      className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-                <Badge variant="success" size="sm">
-                  {room.default_radius_meters}m
-                </Badge>
-              </div>
 
-              <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono text-slate-600">
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3 text-proxi-green" />
-                  {room.latitude.toFixed(5)}, {room.longitude.toFixed(5)}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono text-slate-600">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-proxi-green" />
+                    {room.latitude.toFixed(5)}, {room.longitude.toFixed(5)}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={roomToDelete !== null}
+        onClose={() => setRoomToDelete(null)}
+        onConfirm={handleDeleteRoom}
+        title={`Delete Venue "${roomToDelete?.name}"?`}
+        description={`This will permanently remove ${roomToDelete?.name} (${roomToDelete?.building}) and its anchor geofence coordinates from the system. This action cannot be undone.`}
+        confirmText="Delete Venue"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }
