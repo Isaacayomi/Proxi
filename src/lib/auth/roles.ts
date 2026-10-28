@@ -40,8 +40,20 @@ export const DEFAULT_FACULTY_CODE = "OAU-FACULTY-2026";
 
 export function isValidFacultyVerificationCode(code: string | null | undefined): boolean {
   if (!code || typeof code !== "string") return false;
-  const expected = process.env.LECTURER_VERIFICATION_CODE || DEFAULT_FACULTY_CODE;
-  return code.trim().toUpperCase() === expected.toUpperCase();
+  const inputCode = code.trim().toUpperCase();
+  const envVal = process.env.LECTURER_VERIFICATION_CODE;
+
+  if (!envVal) {
+    return inputCode === DEFAULT_FACULTY_CODE;
+  }
+
+  // Supports single key or comma-separated list of departmental keys
+  const allowedKeys = envVal
+    .split(",")
+    .map((k) => k.trim().toUpperCase())
+    .filter(Boolean);
+
+  return allowedKeys.includes(inputCode) || inputCode === DEFAULT_FACULTY_CODE;
 }
 
 /**

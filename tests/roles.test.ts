@@ -46,6 +46,15 @@ describe("Role Authorization & Matric Number Validation", () => {
     expect(isValidFacultyVerificationCode("INVALID-KEY")).toBe(false);
     expect(isValidFacultyVerificationCode("")).toBe(false);
     expect(isValidFacultyVerificationCode(null)).toBe(false);
+
+    // Test custom env with multiple keys
+    const origEnv = process.env.LECTURER_VERIFICATION_CODE;
+    process.env.LECTURER_VERIFICATION_CODE = "CSC-DEPT-99, FACULTY-SECRET-77";
+    expect(isValidFacultyVerificationCode("CSC-DEPT-99")).toBe(true);
+    expect(isValidFacultyVerificationCode("faculty-secret-77")).toBe(true);
+    expect(isValidFacultyVerificationCode("OAU-FACULTY-2026")).toBe(true);
+    expect(isValidFacultyVerificationCode("WRONG-KEY")).toBe(false);
+    process.env.LECTURER_VERIFICATION_CODE = origEnv;
   });
 
   it("validates academic staff IDs", () => {
