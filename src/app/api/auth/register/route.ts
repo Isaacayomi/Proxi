@@ -4,6 +4,8 @@ import { db } from "@/lib/db/store";
 import {
   isValidMatricNumber,
   isValidFacultyVerificationCode,
+  isValidStudentEmail,
+  isValidLecturerEmail,
 } from "@/lib/auth/roles";
 import { UserRole } from "@/types/database";
 
@@ -39,8 +41,20 @@ export async function POST(req: NextRequest) {
         ? matricNumber.trim().toUpperCase()
         : null;
 
-    // Validate matric number for students
+    // Validate student institutional email and matric number
     if (cleanRole === "student") {
+      if (!isValidStudentEmail(cleanEmail)) {
+        return NextResponse.json(
+          {
+            success: false,
+            code: "INVALID_STUDENT_EMAIL",
+            message:
+              "Invalid student email. Student emails must end with @student.oauife.edu.ng and follow the customized format: initial.surname.deptYearSerial@student.oauife.edu.ng (e.g. i.okunlola.swe2024003@student.oauife.edu.ng). Any other email is considered unauthorized.",
+          },
+          { status: 400 },
+        );
+      }
+
       if (!cleanMatric || !isValidMatricNumber(cleanMatric)) {
         return NextResponse.json(
           {
@@ -53,24 +67,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Validate faculty verification code for lecturers
+    // Validate faculty verification code and email for lecturers
     let isVerified = false;
     let cleanStaffId: string | null = null;
     let verifiedAt: string | null = null;
 
     if (cleanRole === "lecturer") {
-      // Reject student email addresses from registering as academic staff
-      if (
-        cleanEmail.endsWith("@student.oauife.edu.ng") ||
-        cleanEmail.includes(".student.") ||
-        cleanEmail.startsWith("student.")
-      ) {
+      if (!isValidLecturerEmail(cleanEmail)) {
         return NextResponse.json(
           {
             success: false,
-            code: "STUDENT_EMAIL_FORBIDDEN_FOR_FACULTY",
+            code: "INVALID_FACULTY_EMAIL",
             message:
-              "Institutional student email addresses (@student.oauife.edu.ng) cannot be registered as faculty or lecturer accounts.",
+              "Invalid faculty email. Academic staff emails must strictly end with @oauife.edu.ng (e.g. adeyemi@oauife.edu.ng). Any other email domain is considered unauthorized.",
           },
           { status: 403 },
         );

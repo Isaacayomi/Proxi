@@ -12,6 +12,11 @@ import { UserRole } from "@/types/database";
 import { GraduationCap, Compass, ShieldCheck, Smartphone, Key } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getOrCreateDeviceId } from "@/lib/auth/device";
+import {
+  isValidStudentEmail,
+  isValidLecturerEmail,
+  isValidInstitutionalEmail,
+} from "@/lib/auth/roles";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -36,6 +41,21 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setSuccessMsg(null);
+
+    const cleanEmail = email.trim().toLowerCase();
+    if (!isValidInstitutionalEmail(cleanEmail)) {
+      if (cleanEmail.includes("student")) {
+        setError(
+          "Invalid student email format. Student institutional emails must follow the customized format: initial.surname.deptYearSerial@student.oauife.edu.ng (e.g. i.okunlola.swe2024003@student.oauife.edu.ng).",
+        );
+        return;
+      }
+      setError(
+        "Invalid institutional email. Students must use their customized @student.oauife.edu.ng address (e.g. i.okunlola.swe2024003@student.oauife.edu.ng) and lecturers must use their @oauife.edu.ng address. Any other email is considered unauthorized.",
+      );
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -43,7 +63,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password, deviceId }),
+        body: JSON.stringify({ email: cleanEmail, password, deviceId }),
       });
 
       const data = await res.json();
@@ -65,6 +85,21 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setSuccessMsg(null);
+
+    const cleanEmail = email.trim().toLowerCase();
+    if (selectedRole === "student" && !isValidStudentEmail(cleanEmail)) {
+      setError(
+        "Invalid student email. Student emails must end with @student.oauife.edu.ng and follow the customized format: initial.surname.deptYearSerial@student.oauife.edu.ng (e.g. i.okunlola.swe2024003@student.oauife.edu.ng).",
+      );
+      return;
+    }
+    if (selectedRole === "lecturer" && !isValidLecturerEmail(cleanEmail)) {
+      setError(
+        "Invalid faculty email. Academic staff emails must strictly end with @oauife.edu.ng (e.g. adeyemi@oauife.edu.ng).",
+      );
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -73,7 +108,7 @@ export default function LoginPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: email.trim(),
+          email: cleanEmail,
           password,
           firstName: firstName.trim(),
           lastName: lastName.trim(),
@@ -159,12 +194,13 @@ export default function LoginPage() {
           {tab === "signin" && (
             <form onSubmit={handleSignIn} className="space-y-4">
               <Input
-                label="Email Address"
-                placeholder="name@oauife.edu.ng"
+                label="Institutional Email Address"
+                placeholder="e.g. i.okunlola.swe2024003@student.oauife.edu.ng"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
+                hint="Students: @student.oauife.edu.ng | Faculty: @oauife.edu.ng"
                 required
               />
               <Input
@@ -280,16 +316,21 @@ export default function LoginPage() {
               </div>
 
               <Input
-                label="Email Address"
+                label="Institutional Email Address"
                 placeholder={
                   selectedRole === "lecturer"
-                    ? "faculty@oauife.edu.ng"
-                    : "student@student.oauife.edu.ng"
+                    ? "adeyemi@oauife.edu.ng"
+                    : "i.okunlola.swe2024003@student.oauife.edu.ng"
                 }
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
+                hint={
+                  selectedRole === "lecturer"
+                    ? "Official faculty email ending with @oauife.edu.ng"
+                    : "Format: initial.surname.deptYearSerial@student.oauife.edu.ng (e.g. i.okunlola.swe2024003@student.oauife.edu.ng)"
+                }
                 required
               />
 

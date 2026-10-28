@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/store";
+import { isValidStudentEmail, isValidLecturerEmail } from "@/lib/auth/roles";
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,6 +17,37 @@ export async function POST(req: NextRequest) {
 
     const cleanEmail = email.trim().toLowerCase();
     const cleanDeviceId = deviceId ? String(deviceId).trim() : null;
+
+    // Reject false or invalid institutional emails
+    const isStudent = isValidStudentEmail(cleanEmail);
+    const isLecturer = isValidLecturerEmail(cleanEmail);
+
+    if (!isStudent && !isLecturer) {
+      if (
+        cleanEmail.endsWith("@student.oauife.edu.ng") ||
+        cleanEmail.includes("student")
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            code: "INVALID_STUDENT_EMAIL",
+            message:
+              "Invalid student email format. Student institutional emails must follow the customized format: initial.surname.deptYearSerial@student.oauife.edu.ng (e.g. i.okunlola.swe2024003@student.oauife.edu.ng).",
+          },
+          { status: 400 },
+        );
+      }
+
+      return NextResponse.json(
+        {
+          success: false,
+          code: "INVALID_INSTITUTIONAL_EMAIL",
+          message:
+            "Unrecognized institutional email address. Students must use their customized @student.oauife.edu.ng address (e.g. i.okunlola.swe2024003@student.oauife.edu.ng) and lecturers must use their @oauife.edu.ng address. Any other email is considered false.",
+        },
+        { status: 400 },
+      );
+    }
     const supabase = getSupabaseServerClient();
     let profile: any = null;
 

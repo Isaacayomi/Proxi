@@ -86,7 +86,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!targetProfile) {
       targetProfile = {
         id: `u-${newRole}-demo`,
-        email: `${newRole}@oauife.edu.ng`,
+        email:
+          newRole === "student"
+            ? "i.okunlola.swe2024003@student.oauife.edu.ng"
+            : "lecturer@oauife.edu.ng",
         first_name: newRole.charAt(0).toUpperCase() + newRole.slice(1),
         last_name: "User",
         matric_number: newRole === "student" ? "CSC/2024/001" : null,

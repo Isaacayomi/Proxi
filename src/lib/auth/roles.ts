@@ -14,6 +14,50 @@ export function isValidMatricNumber(matric: string): boolean {
 }
 
 /**
+ * Strict OAU student institutional email format:
+ * Pattern: <initial>.<surname>.<dept_code><year><number>@student.oauife.edu.ng
+ * Example: "i.okunlola.swe2024003@student.oauife.edu.ng"
+ */
+export const STUDENT_EMAIL_REGEX =
+  /^[a-z]{1,2}\.[a-z]+(-[a-z]+)?\.[a-z]{2,5}\d{5,8}@student\.oauife\.edu\.ng$/i;
+
+/**
+ * Strict OAU lecturer / faculty institutional email format:
+ * Must strictly end with "@oauife.edu.ng" and NOT be a student domain.
+ * Example: "prof.adeyemi@oauife.edu.ng", "adeyemi@oauife.edu.ng"
+ */
+export const LECTURER_EMAIL_REGEX = /^[a-z0-9._%+-]+@oauife\.edu\.ng$/i;
+
+/**
+ * Validates whether an email strictly complies with OAU student customized format
+ */
+export function isValidStudentEmail(email: string | null | undefined): boolean {
+  if (!email || typeof email !== "string") return false;
+  const clean = email.trim();
+  return STUDENT_EMAIL_REGEX.test(clean);
+}
+
+/**
+ * Validates whether an email strictly complies with OAU faculty format (@oauife.edu.ng)
+ */
+export function isValidLecturerEmail(email: string | null | undefined): boolean {
+  if (!email || typeof email !== "string") return false;
+  const clean = email.trim().toLowerCase();
+  if (clean.endsWith("@student.oauife.edu.ng") || clean.includes("student")) {
+    return false;
+  }
+  return LECTURER_EMAIL_REGEX.test(clean);
+}
+
+/**
+ * Checks whether an email is a valid institutional email for either role.
+ * Any other email aside from valid student or faculty formats is regarded as false.
+ */
+export function isValidInstitutionalEmail(email: string | null | undefined): boolean {
+  return isValidStudentEmail(email) || isValidLecturerEmail(email);
+}
+
+/**
  * Infers the default institutional role from the user's email address
  * - Student email addresses end with "@student.oauife.edu.ng" or contain ".student"
  * - All other faculty emails return "lecturer"

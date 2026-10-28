@@ -5,6 +5,9 @@ import {
   isValidFacultyVerificationCode,
   isValidStaffId,
   formatFullName,
+  isValidStudentEmail,
+  isValidLecturerEmail,
+  isValidInstitutionalEmail,
 } from "@/lib/auth/roles";
 import { generateAttendanceCsv, generateAttendanceFilename } from "@/lib/utils";
 import { AttendanceRecord } from "@/types/database";
@@ -20,8 +23,47 @@ describe("Role Authorization & Matric Number Validation", () => {
 
   it("infers 'lecturer' role for standard faculty emails", () => {
     expect(inferRoleFromEmail("prof.adeyemi@oauife.edu.ng")).toBe("lecturer");
-    expect(inferRoleFromEmail("dr.smith@university.org")).toBe("lecturer");
     expect(inferRoleFromEmail("faculty@oauife.edu.ng")).toBe("lecturer");
+  });
+
+  it("strictly validates customized student email format (initial.surname.deptYearSerial@student.oauife.edu.ng)", () => {
+    // Valid format matching OAU pattern: i.okunlola.swe2024003@student.oauife.edu.ng
+    expect(isValidStudentEmail("i.okunlola.swe2024003@student.oauife.edu.ng")).toBe(true);
+    expect(isValidStudentEmail("I.OKUNLOLA.SWE2024003@STUDENT.OAUIFE.EDU.NG")).toBe(true);
+    expect(isValidStudentEmail("a.okonkwo.csc2024001@student.oauife.edu.ng")).toBe(true);
+    expect(isValidStudentEmail("b.bello.eee2023123@student.oauife.edu.ng")).toBe(true);
+    expect(isValidStudentEmail("o.alabi-smith.mee2022045@student.oauife.edu.ng")).toBe(true);
+
+    // False / Invalid formats
+    expect(isValidStudentEmail("ade.b@student.oauife.edu.ng")).toBe(false);
+    expect(isValidStudentEmail("student@student.oauife.edu.ng")).toBe(false);
+    expect(isValidStudentEmail("i.okunlola.swe2024003@oauife.edu.ng")).toBe(false); // wrong domain
+    expect(isValidStudentEmail("i.okunlola.swe2024003@gmail.com")).toBe(false); // external
+    expect(isValidStudentEmail("")).toBe(false);
+    expect(isValidStudentEmail(null)).toBe(false);
+  });
+
+  it("strictly validates faculty email format (@oauife.edu.ng) and rejects false domains", () => {
+    expect(isValidLecturerEmail("prof.adeyemi@oauife.edu.ng")).toBe(true);
+    expect(isValidLecturerEmail("faculty@oauife.edu.ng")).toBe(true);
+    expect(isValidLecturerEmail("adeyemi@oauife.edu.ng")).toBe(true);
+
+    // Any other domain is regarded false
+    expect(isValidLecturerEmail("dr.smith@university.org")).toBe(false);
+    expect(isValidLecturerEmail("lecturer@gmail.com")).toBe(false);
+    expect(isValidLecturerEmail("i.okunlola.swe2024003@student.oauife.edu.ng")).toBe(false);
+    expect(isValidLecturerEmail("ade.b@student.oauife.edu.ng")).toBe(false);
+    expect(isValidLecturerEmail("")).toBe(false);
+    expect(isValidLecturerEmail(null)).toBe(false);
+  });
+
+  it("identifies valid institutional emails versus false emails", () => {
+    expect(isValidInstitutionalEmail("i.okunlola.swe2024003@student.oauife.edu.ng")).toBe(true);
+    expect(isValidInstitutionalEmail("prof.adeyemi@oauife.edu.ng")).toBe(true);
+
+    expect(isValidInstitutionalEmail("fake.student@gmail.com")).toBe(false);
+    expect(isValidInstitutionalEmail("hacker@yahoo.com")).toBe(false);
+    expect(isValidInstitutionalEmail("invalid.format@student.oauife.edu.ng")).toBe(false);
   });
 
   it("validates matriculation numbers according to institutional format (ABC/YYYY/NNN)", () => {
@@ -92,7 +134,7 @@ describe("CSV Export Utilities", () => {
         submitted_at: "2026-10-27T10:15:00Z",
         student: {
           id: "stu-1",
-          email: "ada@student.oauife.edu.ng",
+          email: "a.okonkwo.csc2024001@student.oauife.edu.ng",
           first_name: "Ada",
           last_name: "Okonkwo",
           matric_number: "CSC/2024/001",

@@ -129,10 +129,21 @@ class AttendanceStore {
 
     this.profiles.set("u-student-1", {
       id: "u-student-1",
-      email: "student@student.oauife.edu.ng",
+      email: "a.okonkwo.csc2024001@student.oauife.edu.ng",
       first_name: "Ada",
       last_name: "Okonkwo",
       matric_number: "CSC/2024/001",
+      role: "student",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    this.profiles.set("u-student-2", {
+      id: "u-student-2",
+      email: "i.okunlola.swe2024003@student.oauife.edu.ng",
+      first_name: "Isaac",
+      last_name: "Okunlola",
+      matric_number: "SWE/2024/003",
       role: "student",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -153,6 +164,7 @@ class AttendanceStore {
     });
 
     this.enrollStudentInCourse("d1111111-1111-1111-1111-111111111111", "u-student-1");
+    this.enrollStudentInCourse("d1111111-1111-1111-1111-111111111111", "u-student-2");
   }
 
   // --- Profiles ---
