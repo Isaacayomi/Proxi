@@ -1,14 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/store";
-import { isValidMatricNumber } from "@/lib/auth/roles";
+import {
+  isValidMatricNumber,
+  isValidFacultyVerificationCode,
+} from "@/lib/auth/roles";
 import { UserRole } from "@/types/database";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => null);
-    const { email, password, firstName, lastName, matricNumber, role } =
-      body || {};
+    const {
+      email,
+      password,
+      firstName,
+      lastName,
+      matricNumber,
+      role,
+      staffVerificationCode,
+      staffId,
+      deviceId,
+    } = body || {};
 
     if (!email || !password || !firstName || !lastName) {
       return NextResponse.json(
@@ -41,10 +53,62 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Validate faculty verification code for lecturers
+    let isVerified = false;
+    let cleanStaffId: string | null = null;
+    let verifiedAt: string | null = null;
+
+    if (cleanRole === "lecturer") {
+      if (!isValidFacultyVerificationCode(staffVerificationCode)) {
+        return NextResponse.json(
+          {
+            success: false,
+            code: "INVALID_FACULTY_CODE",
+            message:
+              "Invalid Faculty Verification Key. A valid departmental staff authorization code is required to register as academic staff.",
+          },
+          { status: 403 },
+        );
+      }
+      isVerified = true;
+      cleanStaffId = staffId ? staffId.trim().toUpperCase() : "OAU/CSE/FACULTY";
+      verifiedAt = new Date().toISOString();
+    }
+
+    // Single device binding for students
+    let boundDeviceId: string | null = null;
+    let deviceBoundAt: string | null = null;
+
+    if (cleanRole === "student" && deviceId) {
+      boundDeviceId = String(deviceId).trim();
+      deviceBoundAt = new Date().toISOString();
+    }
+
     const supabase = getSupabaseServerClient();
     let profile: any = null;
 
     if (supabase) {
+      // Check if this device is already bound to another student in Supabase
+      if (cleanRole === "student" && boundDeviceId) {
+        const { data: existingDeviceProfile } = await supabase
+          .from("profiles")
+          .select("id, email, matric_number")
+          .eq("device_id", boundDeviceId)
+          .neq("email", cleanEmail)
+          .maybeSingle();
+
+        if (existingDeviceProfile) {
+          return NextResponse.json(
+            {
+              success: false,
+              code: "DEVICE_ALREADY_BOUND",
+              message: `This device is already linked to another student account (${existingDeviceProfile.matric_number || "registered student"}). To uphold academic integrity, each device can only be bound to one student.`,
+            },
+            { status: 403 },
+          );
+        }
+      }
+
       // 1. Create or get user in Supabase Auth
       let authData: any = null;
       let authError: any = null;
@@ -59,6 +123,9 @@ export async function POST(req: NextRequest) {
             last_name: lastName.trim(),
             matric_number: cleanMatric,
             role: cleanRole,
+            device_id: boundDeviceId,
+            is_verified: isVerified,
+            staff_id: cleanStaffId,
           },
         });
         authData = adminRes.data;
@@ -67,7 +134,7 @@ export async function POST(req: NextRequest) {
         authError = err;
       }
 
-      // If admin method was rejected with "User not allowed" (e.g. if client lacks service_role), fall back to standard auth.signUp
+      // If admin method was rejected with "User not allowed", fall back to standard auth.signUp
       if (
         authError &&
         (authError.message?.toLowerCase().includes("not allowed") ||
@@ -83,6 +150,9 @@ export async function POST(req: NextRequest) {
               last_name: lastName.trim(),
               matric_number: cleanMatric,
               role: cleanRole,
+              device_id: boundDeviceId,
+              is_verified: isVerified,
+              staff_id: cleanStaffId,
             },
           },
         });
@@ -100,46 +170,35 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      let userId = authData?.user?.id;
-
-      if (!userId) {
-        const { data: existingUser } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("email", cleanEmail)
-          .single();
-        userId = existingUser?.id;
-      }
-
+      // 2. Fetch or upsert profile in public.profiles
+      const userId = authData?.user?.id;
       if (userId) {
-        // 2. Upsert public.profiles record
+        const profilePayload: any = {
+          id: userId,
+          email: cleanEmail,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          matric_number: cleanMatric,
+          role: cleanRole,
+          device_id: boundDeviceId,
+          device_bound_at: deviceBoundAt,
+          is_verified: isVerified,
+          staff_id: cleanStaffId,
+          verified_at: verifiedAt,
+          updated_at: new Date().toISOString(),
+        };
+
         const { data: dbProfile, error: profileError } = await supabase
           .from("profiles")
-          .upsert([
-            {
-              id: userId,
-              email: cleanEmail,
-              first_name: firstName.trim(),
-              last_name: lastName.trim(),
-              matric_number: cleanMatric,
-              role: cleanRole,
-              updated_at: new Date().toISOString(),
-            },
-          ])
+          .upsert([profilePayload])
           .select()
           .single();
 
         if (profileError) {
           console.warn("Profiles upsert notice:", profileError.message);
           profile = {
-            id: userId,
-            email: cleanEmail,
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
-            matric_number: cleanMatric,
-            role: cleanRole,
+            ...profilePayload,
             created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
           };
         } else {
           profile = dbProfile;
@@ -147,6 +206,20 @@ export async function POST(req: NextRequest) {
       }
     } else {
       // Local / In-memory fallback
+      if (cleanRole === "student" && boundDeviceId) {
+        const existingDevice = db.getProfileByDeviceId(boundDeviceId);
+        if (existingDevice && existingDevice.email.toLowerCase() !== cleanEmail) {
+          return NextResponse.json(
+            {
+              success: false,
+              code: "DEVICE_ALREADY_BOUND",
+              message: `This device is already linked to another student account (${existingDevice.matric_number || "student"}). To uphold academic integrity, each device can only be bound to one student.`,
+            },
+            { status: 403 },
+          );
+        }
+      }
+
       const id = "u-" + crypto.randomUUID();
       profile = db.saveProfile({
         id,
@@ -155,6 +228,11 @@ export async function POST(req: NextRequest) {
         last_name: lastName.trim(),
         matric_number: cleanMatric,
         role: cleanRole,
+        device_id: boundDeviceId,
+        device_bound_at: deviceBoundAt,
+        is_verified: isVerified,
+        staff_id: cleanStaffId,
+        verified_at: verifiedAt,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
@@ -167,6 +245,8 @@ export async function POST(req: NextRequest) {
       first_name: profile.first_name,
       last_name: profile.last_name,
       matric_number: profile.matric_number,
+      device_id: profile.device_id,
+      is_verified: profile.is_verified,
     };
 
     const res = NextResponse.json(

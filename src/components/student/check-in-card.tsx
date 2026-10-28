@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/toast";
 import { formatTime } from "@/lib/utils";
+import { getOrCreateDeviceId } from "@/lib/auth/device";
 import {
   MapPin,
   Navigation,
@@ -91,6 +92,7 @@ export function CheckInCard({
             latitude,
             longitude,
             accuracy,
+            deviceId: getOrCreateDeviceId(),
           }),
         });
 
@@ -110,6 +112,11 @@ export function CheckInCard({
               : `Successfully checked into ${session.course?.code || "lecture"}${distInfo}.`,
           );
           onSuccess?.();
+        } else if (data.code === "DEVICE_MISMATCH") {
+          toast.error(
+            "Device Binding Security Alert 🔒",
+            "This account is locked to another registered device. You can only check in from your primary device.",
+          );
         } else {
           toast.error(
             "Check-In Verification Failed",

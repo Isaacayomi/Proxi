@@ -33,6 +33,26 @@ export function inferRoleFromEmail(email: string): UserRole {
 }
 
 /**
+ * Standard faculty verification code required to register as academic staff.
+ * Default fallback is "OAU-FACULTY-2026", customizable via env variable.
+ */
+export const DEFAULT_FACULTY_CODE = "OAU-FACULTY-2026";
+
+export function isValidFacultyVerificationCode(code: string | null | undefined): boolean {
+  if (!code || typeof code !== "string") return false;
+  const expected = process.env.LECTURER_VERIFICATION_CODE || DEFAULT_FACULTY_CODE;
+  return code.trim().toUpperCase() === expected.toUpperCase();
+}
+
+/**
+ * Validates staff ID (e.g. "OAU/STAFF/001" or any non-empty university staff format)
+ */
+export function isValidStaffId(staffId: string | null | undefined): boolean {
+  if (!staffId || typeof staffId !== "string") return false;
+  return staffId.trim().length >= 3;
+}
+
+/**
  * Returns user display name or fallback
  */
 export function formatFullName(

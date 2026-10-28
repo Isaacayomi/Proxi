@@ -19,6 +19,11 @@ export interface Profile {
   last_name: string | null;
   matric_number: string | null;
   role: UserRole;
+  device_id?: string | null;
+  device_bound_at?: string | null;
+  is_verified?: boolean;
+  staff_id?: string | null;
+  verified_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -99,6 +104,8 @@ export interface VerificationResult {
     | "UNAUTHORIZED_ROLE"
     | "NOT_ENROLLED"
     | "DUPLICATE_CHECKIN"
+    | "DEVICE_MISMATCH"
+    | "DEVICE_ALREADY_BOUND"
     | "INACCURATE_LOCATION"
     | "OUTSIDE_GEOFENCE"
     | "SERVER_ERROR";

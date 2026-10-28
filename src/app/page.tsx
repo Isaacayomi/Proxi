@@ -22,7 +22,7 @@ export default function HomePage() {
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="flex flex-col items-center gap-3">
         <div className="w-8 h-8 border-2 border-proxi-green border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs text-proxi-muted">Authenticating Proxi session...</span>
+        <span className="text-xs text-proxi-muted">Authenticating ProxiCheck session...</span>
       </div>
     </div>
   );

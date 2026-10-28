@@ -9,10 +9,10 @@ import { Select } from "@/components/ui/select";
 import { AttendanceSession, AttendanceRecord } from "@/types/database";
 
 describe("Brand Component", () => {
-  it("renders the proxi logo brand name", () => {
+  it("renders the ProxiCheck brand name", () => {
     render(<Brand />);
-    expect(screen.getByText("proxi")).toBeInTheDocument();
-    expect(screen.getByText(".")).toBeInTheDocument();
+    expect(screen.getByText("Proxi")).toBeInTheDocument();
+    expect(screen.getByText("Check")).toBeInTheDocument();
   });
 });
 

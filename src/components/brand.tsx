@@ -45,7 +45,7 @@ export function Brand({
           textSizes[size],
         )}
       >
-        proxi<span className="text-proxi-green">.</span>
+        Proxi<span className="text-proxi-green">Check</span>
       </span>
     </div>
   );

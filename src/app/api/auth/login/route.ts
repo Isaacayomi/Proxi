@@ -5,7 +5,7 @@ import { db } from "@/lib/db/store";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => null);
-    const { email, password } = body || {};
+    const { email, password, deviceId } = body || {};
 
     if (!email || !password) {
       return NextResponse.json(
@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const cleanDeviceId = deviceId ? String(deviceId).trim() : null;
     const supabase = getSupabaseServerClient();
     let profile: any = null;
 
@@ -55,15 +56,69 @@ export async function POST(req: NextRequest) {
           last_name: meta.last_name || "",
           matric_number: meta.matric_number || null,
           role: meta.role || "student",
+          device_id: meta.device_id || null,
+          is_verified: meta.is_verified || false,
+          staff_id: meta.staff_id || null,
           created_at: authData.user.created_at || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
 
-        // Best effort background upsert
         try {
           await supabase.from("profiles").upsert([profile]);
         } catch {
-          // ignore RLS policy limitation
+          // ignore
+        }
+      }
+
+      // 3. Single Device Verification for Students
+      if (profile.role === "student" && cleanDeviceId) {
+        // A. If student already has a bound device
+        if (profile.device_id && profile.device_id !== cleanDeviceId) {
+          return NextResponse.json(
+            {
+              success: false,
+              code: "DEVICE_MISMATCH",
+              message:
+                "Access restricted: this account is bound to another registered device. To uphold academic integrity and prevent proxy attendance, each student must log in from their primary bound device.",
+            },
+            { status: 403 },
+          );
+        }
+
+        // B. If student has no bound device, verify that this device is not bound to another student
+        if (!profile.device_id) {
+          const { data: otherStudent } = await supabase
+            .from("profiles")
+            .select("id, matric_number, email")
+            .eq("device_id", cleanDeviceId)
+            .neq("id", profile.id)
+            .maybeSingle();
+
+          if (otherStudent) {
+            return NextResponse.json(
+              {
+                success: false,
+                code: "DEVICE_ALREADY_BOUND",
+                message: `This device is already linked to another student account (${otherStudent.matric_number || "registered student"}). Each device can only be bound to one student account.`,
+              },
+              { status: 403 },
+            );
+          }
+
+          // Bind device to this student
+          profile.device_id = cleanDeviceId;
+          profile.device_bound_at = new Date().toISOString();
+          try {
+            await supabase
+              .from("profiles")
+              .update({
+                device_id: cleanDeviceId,
+                device_bound_at: profile.device_bound_at,
+              })
+              .eq("id", profile.id);
+          } catch {
+            // ignore
+          }
         }
       }
     } else {
@@ -75,6 +130,38 @@ export async function POST(req: NextRequest) {
           { status: 401 },
         );
       }
+
+      if (profile.role === "student" && cleanDeviceId) {
+        if (profile.device_id && profile.device_id !== cleanDeviceId) {
+          return NextResponse.json(
+            {
+              success: false,
+              code: "DEVICE_MISMATCH",
+              message:
+                "Access restricted: this account is bound to another registered device. To uphold academic integrity and prevent proxy attendance, each student must log in from their primary bound device.",
+            },
+            { status: 403 },
+          );
+        }
+
+        if (!profile.device_id) {
+          const otherStudent = db.getProfileByDeviceId(cleanDeviceId);
+          if (otherStudent && otherStudent.id !== profile.id) {
+            return NextResponse.json(
+              {
+                success: false,
+                code: "DEVICE_ALREADY_BOUND",
+                message: `This device is already linked to another student account (${otherStudent.matric_number || "student"}). Each device can only be bound to one student account.`,
+              },
+              { status: 403 },
+            );
+          }
+
+          profile.device_id = cleanDeviceId;
+          profile.device_bound_at = new Date().toISOString();
+          db.saveProfile(profile);
+        }
+      }
     }
 
     const sessionPayload = {
@@ -84,6 +171,8 @@ export async function POST(req: NextRequest) {
       first_name: profile.first_name,
       last_name: profile.last_name,
       matric_number: profile.matric_number,
+      device_id: profile.device_id,
+      is_verified: profile.is_verified,
     };
 
     const res = NextResponse.json({
@@ -92,7 +181,6 @@ export async function POST(req: NextRequest) {
       user: profile,
     });
 
-    // Set session cookie for middleware protection
     res.cookies.set("proxi_session", JSON.stringify(sessionPayload), {
       path: "/",
       maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -102,7 +190,10 @@ export async function POST(req: NextRequest) {
     return res;
   } catch (err: unknown) {
     return NextResponse.json(
-      { success: false, message: err instanceof Error ? err.message : "Error signing in" },
+      {
+        success: false,
+        message: err instanceof Error ? err.message : "Error signing in",
+      },
       { status: 500 },
     );
   }

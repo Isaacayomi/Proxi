@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { SessionMonitor } from "@/components/lecturer/session-monitor";
 import { CreateSessionModal } from "@/components/lecturer/create-session-modal";
 import { formatTime, formatDateTime } from "@/lib/utils";
-import { Compass, Plus, Users, MapPin, Clock, BookOpen, Building2, ArrowRight } from "lucide-react";
+import { Compass, Plus, Users, MapPin, Clock, BookOpen, Building2, ArrowRight, ShieldCheck } from "lucide-react";
 
 export default function LecturerDashboardPage() {
   const { user } = useAuth();
@@ -78,11 +78,21 @@ export default function LecturerDashboardPage() {
       {/* Greeting Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/90 shadow-card">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[11px] font-bold text-proxi-green uppercase tracking-wider font-mono">
               Faculty Command Center
             </span>
-            <Badge variant="success" size="sm">Active Term</Badge>
+            <Badge variant="success" size="sm">
+              <span className="flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                Verified Academic Staff
+              </span>
+            </Badge>
+            {user?.staff_id && (
+              <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
+                {user.staff_id}
+              </span>
+            )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-proxi-ink tracking-tight font-sans">
             {user?.first_name ? `${user.first_name} ${user.last_name || ""}` : "Faculty Member"}

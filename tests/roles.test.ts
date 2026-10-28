@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   inferRoleFromEmail,
   isValidMatricNumber,
+  isValidFacultyVerificationCode,
+  isValidStaffId,
   formatFullName,
 } from "@/lib/auth/roles";
 import { generateAttendanceCsv, generateAttendanceFilename } from "@/lib/utils";
@@ -36,6 +38,21 @@ describe("Role Authorization & Matric Number Validation", () => {
     expect(formatFullName("Ada", "Okonkwo")).toBe("Ada Okonkwo");
     expect(formatFullName("Ada", null)).toBe("Ada");
     expect(formatFullName(null, null, "Guest Student")).toBe("Guest Student");
+  });
+
+  it("validates faculty staff verification code", () => {
+    expect(isValidFacultyVerificationCode("OAU-FACULTY-2026")).toBe(true);
+    expect(isValidFacultyVerificationCode("oau-faculty-2026")).toBe(true);
+    expect(isValidFacultyVerificationCode("INVALID-KEY")).toBe(false);
+    expect(isValidFacultyVerificationCode("")).toBe(false);
+    expect(isValidFacultyVerificationCode(null)).toBe(false);
+  });
+
+  it("validates academic staff IDs", () => {
+    expect(isValidStaffId("OAU/CSE/001")).toBe(true);
+    expect(isValidStaffId("STAFF-123")).toBe(true);
+    expect(isValidStaffId("AB")).toBe(false);
+    expect(isValidStaffId("")).toBe(false);
   });
 });
 

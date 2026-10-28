@@ -78,6 +78,9 @@ class AttendanceStore {
       last_name: "Adeyemi",
       matric_number: null,
       role: "lecturer",
+      is_verified: true,
+      staff_id: "OAU/CSE/001",
+      verified_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
@@ -93,6 +96,14 @@ class AttendanceStore {
   getProfileByEmail(email: string): Profile | null {
     for (const p of this.profiles.values()) {
       if (p.email.toLowerCase() === email.toLowerCase()) return p;
+    }
+    return null;
+  }
+
+  getProfileByDeviceId(deviceId: string): Profile | null {
+    if (!deviceId) return null;
+    for (const p of this.profiles.values()) {
+      if (p.device_id === deviceId) return p;
     }
     return null;
   }

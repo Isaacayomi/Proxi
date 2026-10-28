@@ -22,6 +22,7 @@ import {
   Trash2,
   Loader2,
   CheckCircle2,
+  Smartphone,
 } from "lucide-react";
 
 export default function StudentDashboardPage() {
@@ -142,13 +143,17 @@ export default function StudentDashboardPage() {
       {/* Student Profile & Greeting Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/90 shadow-card">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[11px] font-bold text-proxi-green uppercase tracking-wider font-mono">
               Student Attendance Portal
             </span>
             <Badge variant="success" size="sm">
               {enrolledCourses.length > 0 ? "Enrolled" : "Registration Open"}
             </Badge>
+            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
+              <Smartphone className="w-3 h-3 text-emerald-600" />
+              Bound Device Verified
+            </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-proxi-ink tracking-tight">
             Welcome, {user?.first_name || "Student"}

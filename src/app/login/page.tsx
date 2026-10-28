@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { useAuth } from "@/lib/auth/auth-context";
 import { UserRole } from "@/types/database";
-import { GraduationCap, Compass, ShieldCheck, Lock, Mail, User } from "lucide-react";
+import { GraduationCap, Compass, ShieldCheck, Smartphone, Key } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getOrCreateDeviceId } from "@/lib/auth/device";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,6 +26,8 @@ export default function LoginPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [matricNumber, setMatricNumber] = useState("");
+  const [staffId, setStaffId] = useState("");
+  const [staffVerificationCode, setStaffVerificationCode] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,10 +40,11 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
+      const deviceId = getOrCreateDeviceId();
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ email: email.trim(), password, deviceId }),
       });
 
       const data = await res.json();
@@ -65,6 +69,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
+      const deviceId = getOrCreateDeviceId();
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -75,6 +80,11 @@ export default function LoginPage() {
           lastName: lastName.trim(),
           matricNumber: matricNumber ? matricNumber.trim().toUpperCase() : null,
           role: selectedRole,
+          staffId: staffId ? staffId.trim() : null,
+          staffVerificationCode: staffVerificationCode
+            ? staffVerificationCode.trim()
+            : null,
+          deviceId,
         }),
       });
 
@@ -99,11 +109,11 @@ export default function LoginPage() {
       <div className="text-center space-y-3">
         <Brand size="lg" className="justify-center" />
         <div className="space-y-1">
-          <h1 className="text-xl font-bold tracking-tight text-proxi-ink">
-            University Attendance Portal
+          <h1 className="text-xl font-bold tracking-tight text-proxi-ink font-sans">
+            ProxiCheck Attendance Portal
           </h1>
-          <p className="text-xs text-proxi-muted max-w-xs mx-auto">
-            Verified classroom proximity check-ins with server-side geofencing
+          <p className="text-xs text-proxi-muted max-w-xs mx-auto font-sans">
+            Verified classroom proximity check-ins with device binding & geofencing
           </p>
         </div>
       </div>
@@ -144,31 +154,21 @@ export default function LoginPage() {
         </div>
 
         <CardContent className="p-6 pt-3 space-y-4">
-          {error && (
-            <Alert variant="error">
-              {error}
-            </Alert>
-          )}
-
-          {successMsg && (
-            <Alert variant="success">
-              {successMsg}
-            </Alert>
-          )}
+          {error && <Alert variant="error">{error}</Alert>}
+          {successMsg && <Alert variant="success">{successMsg}</Alert>}
 
           {/* SIGN IN FORM */}
           {tab === "signin" && (
             <form onSubmit={handleSignIn} className="space-y-4">
               <Input
-                label="Institutional Email"
-                placeholder="you@student.oauife.edu.ng"
+                label="Email Address"
+                placeholder="name@oauife.edu.ng"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
                 required
               />
-
               <Input
                 label="Password"
                 type="password"
@@ -179,26 +179,24 @@ export default function LoginPage() {
                 required
               />
 
-              <Button type="submit" className="w-full mt-2" isLoading={isLoading}>
-                Sign In to Portal
-              </Button>
-
-              <div className="pt-2 text-center">
-                <span className="text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-proxi-green" />
-                  Secured by institutional authentication
-                </span>
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200/60 text-[11px] text-slate-500">
+                <Smartphone className="w-3.5 h-3.5 text-proxi-green shrink-0" />
+                <span>One-device verification: Logging in binds your account to this device.</span>
               </div>
+
+              <Button type="submit" className="w-full mt-2" isLoading={isLoading}>
+                Sign In to ProxiCheck
+              </Button>
             </form>
           )}
 
-          {/* CREATE ACCOUNT FORM */}
+          {/* SIGN UP FORM */}
           {tab === "signup" && (
             <form onSubmit={handleSignUp} className="space-y-4">
-              {/* Role Selection Tabs */}
+              {/* Role Selection */}
               <div className="space-y-1.5">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 font-sans">
-                  Account Type
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 block font-sans">
+                  Select Role
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -213,7 +211,9 @@ export default function LoginPage() {
                   >
                     <GraduationCap className="w-4 h-4 mx-auto mb-1 text-proxi-green" />
                     <span className="text-xs block font-bold">Student</span>
-                    <span className="text-[10px] text-slate-500 block mt-0.5">Check into lectures</span>
+                    <span className="text-[10px] text-slate-500 block mt-0.5">
+                      Check into lectures
+                    </span>
                   </button>
 
                   <button
@@ -228,10 +228,39 @@ export default function LoginPage() {
                   >
                     <Compass className="w-4 h-4 mx-auto mb-1 text-sky-600" />
                     <span className="text-xs block font-bold">Lecturer</span>
-                    <span className="text-[10px] text-slate-500 block mt-0.5">Manage sessions</span>
+                    <span className="text-[10px] text-slate-500 block mt-0.5">
+                      Faculty verification
+                    </span>
                   </button>
                 </div>
               </div>
+
+              {/* Security info cards based on role */}
+              {selectedRole === "student" ? (
+                <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200/60 text-xs text-emerald-950 flex items-start gap-2.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="font-bold block text-emerald-900 text-xs">
+                      One Login Per Device Policy
+                    </span>
+                    <p className="text-[11px] text-emerald-800 leading-relaxed">
+                      To prevent proxy attendance, your student account will be permanently bound to this physical device. You cannot share devices or check in from secondary phones.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-sky-50/70 rounded-xl border border-sky-200/60 text-xs text-sky-950 flex items-start gap-2.5">
+                  <Key className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="font-bold block text-sky-900 text-xs">
+                      Academic Staff Verification
+                    </span>
+                    <p className="text-[11px] text-sky-800 leading-relaxed">
+                      Lecturer roles require departmental authorization. Enter your Faculty Key to activate session creation privileges.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <Input
@@ -272,10 +301,35 @@ export default function LoginPage() {
                   label="Matriculation Number"
                   placeholder="CSC/2024/001"
                   value={matricNumber}
-                  onChange={(e) => setMatricNumber(e.target.value.toUpperCase())}
+                  onChange={(e) =>
+                    setMatricNumber(e.target.value.toUpperCase())
+                  }
                   hint="Format: ABC/YYYY/NNN (e.g. CSC/2024/001)"
                   required
                 />
+              )}
+
+              {/* Verification fields for lecturers */}
+              {selectedRole === "lecturer" && (
+                <div className="space-y-3 pt-1">
+                  <Input
+                    label="Staff ID / Employee Number"
+                    placeholder="e.g. OAU/CSE/042"
+                    value={staffId}
+                    onChange={(e) => setStaffId(e.target.value.toUpperCase())}
+                    hint="University academic staff credential"
+                    required
+                  />
+                  <Input
+                    label="Faculty Verification Key"
+                    type="password"
+                    placeholder="Enter departmental authorization key"
+                    value={staffVerificationCode}
+                    onChange={(e) => setStaffVerificationCode(e.target.value)}
+                    hint="Departmental key (e.g. OAU-FACULTY-2026)"
+                    required
+                  />
+                </div>
               )}
 
               <Input
@@ -289,7 +343,7 @@ export default function LoginPage() {
               />
 
               <Button type="submit" className="w-full mt-2" isLoading={isLoading}>
-                Create {selectedRole === "student" ? "Student" : "Lecturer"} Account
+                Create {selectedRole === "student" ? "Student" : "Verified Lecturer"} Account
               </Button>
             </form>
           )}

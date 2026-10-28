@@ -5,7 +5,7 @@ import { ToastProvider } from "@/components/ui/toast";
 import { Navigation } from "@/components/navigation";
 
 export const metadata: Metadata = {
-  title: "proxi. • University GPS Geofence Attendance",
+  title: "ProxiCheck • University GPS Geofence Attendance",
   description:
     "Proximity-based verified GPS classroom attendance management system for Obafemi Awolowo University faculty and students.",
   icons: {
@@ -56,7 +56,7 @@ export default function RootLayout({
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-2">
                 <p className="font-bold tracking-widest text-[11px] uppercase text-proxi-ink/80 flex items-center justify-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-proxi-green animate-pulse" />
-                  proxi. • Proximity-Based Campus Attendance
+                  ProxiCheck • Proximity-Based Campus Attendance
                 </p>
                 <p className="text-proxi-muted text-[11px]">
                   Department of Computer Science & Engineering • Obafemi Awolowo University, Ile-Ife

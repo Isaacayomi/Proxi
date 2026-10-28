@@ -6,7 +6,8 @@ import { evaluateGeofence } from "@/lib/geo/distance";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => null);
-    const { sessionId, studentId, latitude, longitude, accuracy } = body || {};
+    const { sessionId, studentId, latitude, longitude, accuracy, deviceId } =
+      body || {};
 
     if (!sessionId || !studentId) {
       return NextResponse.json(
@@ -98,6 +99,20 @@ export async function POST(req: NextRequest) {
               success: false,
               code: "UNAUTHORIZED_ROLE",
               message: `You are signed in as a ${profile.role}. Only student accounts can check into attendance sessions.`,
+            },
+            { status: 403 },
+          );
+        }
+
+        // Single device binding check
+        const cleanDevId = deviceId ? String(deviceId).trim() : null;
+        if (profile?.device_id && cleanDevId && profile.device_id !== cleanDevId) {
+          return NextResponse.json(
+            {
+              success: false,
+              code: "DEVICE_MISMATCH",
+              message:
+                "Check-in rejected: this account is bound to another registered device. You may only check into attendance from your verified primary device.",
             },
             { status: 403 },
           );
@@ -259,6 +274,20 @@ export async function POST(req: NextRequest) {
     }
 
     // Fallback to in-memory store if offline / local testing
+    const localProfile = db.getProfile(studentId);
+    const cleanDevId = deviceId ? String(deviceId).trim() : null;
+    if (localProfile?.device_id && cleanDevId && localProfile.device_id !== cleanDevId) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "DEVICE_MISMATCH",
+          message:
+            "Check-in rejected: this account is bound to another registered device. You may only check into attendance from your verified primary device.",
+        },
+        { status: 403 },
+      );
+    }
+
     const result = db.verifyAndRecordAttendance(
       sessionId,
       studentId,
