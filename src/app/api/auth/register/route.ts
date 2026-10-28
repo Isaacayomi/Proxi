@@ -179,6 +179,23 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // Check if user profile already exists with this email in Supabase
+      const { data: existingUser } = await supabase
+        .from("profiles")
+        .select("id, email, matric_number")
+        .eq("email", cleanEmail)
+        .maybeSingle();
+
+      if (existingUser) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "An account with this email address already exists. Please sign in instead.",
+          },
+          { status: 400 },
+        );
+      }
+
       // 1. Create or get user in Supabase Auth
       let authData: any = null;
       let authError: any = null;
@@ -230,10 +247,22 @@ export async function POST(req: NextRequest) {
         authError = signUpRes.error;
       }
 
-      if (authError && !authError.message.includes("already")) {
-        const errorMsg = authError.message.toLowerCase().includes("rate")
+      if (authError) {
+        const msg = authError.message || "";
+        if (msg.toLowerCase().includes("already")) {
+          return NextResponse.json(
+            {
+              success: false,
+              message: "An account with this email address already exists. Please sign in instead.",
+            },
+            { status: 400 },
+          );
+        }
+
+        const errorMsg = msg.toLowerCase().includes("rate")
           ? "Supabase email rate limit exceeded. Please disable 'Confirm email' in Supabase Dashboard (Authentication -> Providers -> Email) to allow instant registration without email confirmations."
-          : authError.message;
+          : msg || "Registration failed.";
+
         return NextResponse.json(
           { success: false, message: errorMsg },
           { status: 400 },
@@ -242,40 +271,58 @@ export async function POST(req: NextRequest) {
 
       // 2. Fetch or upsert profile in public.profiles
       const userId = authData?.user?.id;
-      if (userId) {
-        const profilePayload: any = {
-          id: userId,
-          email: cleanEmail,
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          matric_number: cleanMatric,
-          role: cleanRole,
-          device_id: boundDeviceId,
-          device_bound_at: deviceBoundAt,
-          is_verified: isVerified,
-          staff_id: cleanStaffId,
-          verified_at: verifiedAt,
-          updated_at: new Date().toISOString(),
+      if (!userId) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Failed to create user account. Please check your details and try again.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const profilePayload: any = {
+        id: userId,
+        email: cleanEmail,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        matric_number: cleanMatric,
+        role: cleanRole,
+        device_id: boundDeviceId,
+        device_bound_at: deviceBoundAt,
+        is_verified: isVerified,
+        staff_id: cleanStaffId,
+        verified_at: verifiedAt,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data: dbProfile, error: profileError } = await supabase
+        .from("profiles")
+        .upsert([profilePayload])
+        .select()
+        .single();
+
+      if (profileError || !dbProfile) {
+        profile = {
+          ...profilePayload,
+          created_at: new Date().toISOString(),
         };
-
-        const { data: dbProfile, error: profileError } = await supabase
-          .from("profiles")
-          .upsert([profilePayload])
-          .select()
-          .single();
-
-        if (profileError) {
-          console.warn("Profiles upsert notice:", profileError.message);
-          profile = {
-            ...profilePayload,
-            created_at: new Date().toISOString(),
-          };
-        } else {
-          profile = dbProfile;
-        }
+      } else {
+        profile = dbProfile;
       }
     } else {
       // Local / In-memory fallback
+      const existingProfile = db.getProfileByEmail(cleanEmail);
+      if (existingProfile) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "An account with this email address already exists. Please sign in instead.",
+          },
+          { status: 400 },
+        );
+      }
+
       if (cleanRole === "student" && boundDeviceId) {
         const existingDevice = db.getProfileByDeviceId(boundDeviceId);
         if (existingDevice && existingDevice.email.toLowerCase() !== cleanEmail) {
@@ -306,6 +353,16 @@ export async function POST(req: NextRequest) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
+    }
+
+    if (!profile || !profile.id) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Unable to complete registration. Please try again.",
+        },
+        { status: 500 },
+      );
     }
 
     const sessionPayload = {

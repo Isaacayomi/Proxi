@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
       if (!error && data) {
         const checkedInMap = new Map<string, string>();
         if (studentId && data.length > 0) {
-          const sessionIds = data.map((s: any) => s.id);
+          const sessionIds = (data || []).filter(Boolean).map((s: any) => s?.id).filter(Boolean);
           const { data: records } = await supabase
             .from("attendance_records")
             .select("session_id, submitted_at, status")
@@ -69,11 +69,11 @@ export async function GET(req: NextRequest) {
           }
         }
 
-        const mapped = data.map((s: any) => ({
+        const mapped = (data || []).filter(Boolean).map((s: any) => ({
           ...s,
-          record_count: s.records?.[0]?.count || 0,
-          has_checked_in: checkedInMap.has(s.id),
-          checked_in_at: checkedInMap.get(s.id) || null,
+          record_count: s?.records?.[0]?.count || 0,
+          has_checked_in: checkedInMap.has(s?.id),
+          checked_in_at: checkedInMap.get(s?.id) || null,
         }));
         return NextResponse.json({ success: true, sessions: mapped });
       }

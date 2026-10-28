@@ -195,6 +195,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (!profile || !profile.id) {
+      return NextResponse.json(
+        { success: false, message: "Invalid email or password." },
+        { status: 401 },
+      );
+    }
+
     const sessionPayload = {
       id: profile.id,
       email: profile.email,

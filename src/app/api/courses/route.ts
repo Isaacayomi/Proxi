@@ -21,13 +21,19 @@ export async function GET(req: NextRequest) {
             .select("course_id")
             .eq("student_id", studentId);
 
-          const enrolledIds = new Set((enrollments || []).map((e: any) => e.course_id));
-          const enrolledCourses = allCourses.filter((c: any) => enrolledIds.has(c.id));
-          const availableCourses = allCourses.filter((c: any) => !enrolledIds.has(c.id));
+          const enrolledIds = new Set(
+            (enrollments || []).filter(Boolean).map((e: any) => e?.course_id).filter(Boolean),
+          );
+          const enrolledCourses = (allCourses || []).filter(
+            (c: any) => c && c.id && enrolledIds.has(c.id),
+          );
+          const availableCourses = (allCourses || []).filter(
+            (c: any) => c && c.id && !enrolledIds.has(c.id),
+          );
 
           return NextResponse.json({
             success: true,
-            courses: allCourses,
+            courses: (allCourses || []).filter((c: any) => c && c.id),
             enrolledCourses,
             availableCourses,
             enrolledCourseIds: Array.from(enrolledIds),
@@ -36,19 +42,19 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({
           success: true,
-          courses: allCourses,
+          courses: (allCourses || []).filter((c: any) => c && c.id),
           enrolledCourses: [],
-          availableCourses: allCourses,
+          availableCourses: (allCourses || []).filter((c: any) => c && c.id),
           enrolledCourseIds: [],
         });
       }
     }
 
-    const allCourses = db.listCourses();
+    const allCourses = db.listCourses().filter((c) => c && c.id);
     if (studentId) {
-      const enrolledCourses = db.getStudentCourses(studentId);
+      const enrolledCourses = db.getStudentCourses(studentId).filter((c) => c && c.id);
       const enrolledIds = new Set(enrolledCourses.map((c) => c.id));
-      const availableCourses = allCourses.filter((c) => !enrolledIds.has(c.id));
+      const availableCourses = allCourses.filter((c) => c && c.id && !enrolledIds.has(c.id));
       return NextResponse.json({
         success: true,
         courses: allCourses,
