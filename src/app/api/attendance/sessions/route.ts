@@ -7,6 +7,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const lecturerId = searchParams.get("lecturerId") || undefined;
     const courseId = searchParams.get("courseId") || undefined;
+    const studentId = searchParams.get("studentId") || undefined;
 
     const supabase = getSupabaseServerClient();
     if (supabase) {
@@ -32,6 +33,21 @@ export async function GET(req: NextRequest) {
           query = query.eq("course_id", courseId);
         }
       }
+      if (studentId) {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studentId);
+        if (isUuid) {
+          const { data: enrollments } = await supabase
+            .from("course_enrollments")
+            .select("course_id")
+            .eq("student_id", studentId);
+
+          const enrolledCourseIds = (enrollments || []).map((e: any) => e.course_id);
+          if (enrolledCourseIds.length === 0) {
+            return NextResponse.json({ success: true, sessions: [] });
+          }
+          query = query.in("course_id", enrolledCourseIds);
+        }
+      }
 
       const { data, error } = await query;
       if (!error && data) {
@@ -41,6 +57,11 @@ export async function GET(req: NextRequest) {
         }));
         return NextResponse.json({ success: true, sessions: mapped });
       }
+    }
+
+    if (studentId) {
+      const studentSessions = db.getActiveStudentSessions(studentId);
+      return NextResponse.json({ success: true, sessions: studentSessions });
     }
 
     const sessions = db.listSessions({ lecturerId, courseId });

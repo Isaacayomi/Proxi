@@ -199,6 +199,12 @@ class AttendanceStore {
     }
   }
 
+  unenrollStudentFromCourse(courseId: string, studentId: string): void {
+    this.enrollments = this.enrollments.filter(
+      (e) => !(e.course_id === courseId && e.student_id === studentId),
+    );
+  }
+
   isStudentEnrolled(courseId: string, studentId: string): boolean {
     return this.enrollments.some(
       (e) => e.course_id === courseId && e.student_id === studentId,

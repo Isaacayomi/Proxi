@@ -2,22 +2,69 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db/store";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const studentId = searchParams.get("studentId") || undefined;
+
     const supabase = getSupabaseServerClient();
     if (supabase) {
-      const { data, error } = await supabase
+      const { data: allCourses, error } = await supabase
         .from("courses")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (!error && data) {
-        return NextResponse.json({ success: true, courses: data });
+      if (!error && allCourses) {
+        if (studentId) {
+          const { data: enrollments } = await supabase
+            .from("course_enrollments")
+            .select("course_id")
+            .eq("student_id", studentId);
+
+          const enrolledIds = new Set((enrollments || []).map((e: any) => e.course_id));
+          const enrolledCourses = allCourses.filter((c: any) => enrolledIds.has(c.id));
+          const availableCourses = allCourses.filter((c: any) => !enrolledIds.has(c.id));
+
+          return NextResponse.json({
+            success: true,
+            courses: allCourses,
+            enrolledCourses,
+            availableCourses,
+            enrolledCourseIds: Array.from(enrolledIds),
+          });
+        }
+
+        return NextResponse.json({
+          success: true,
+          courses: allCourses,
+          enrolledCourses: [],
+          availableCourses: allCourses,
+          enrolledCourseIds: [],
+        });
       }
     }
 
-    const courses = db.listCourses();
-    return NextResponse.json({ success: true, courses });
+    const allCourses = db.listCourses();
+    if (studentId) {
+      const enrolledCourses = db.getStudentCourses(studentId);
+      const enrolledIds = new Set(enrolledCourses.map((c) => c.id));
+      const availableCourses = allCourses.filter((c) => !enrolledIds.has(c.id));
+      return NextResponse.json({
+        success: true,
+        courses: allCourses,
+        enrolledCourses,
+        availableCourses,
+        enrolledCourseIds: Array.from(enrolledIds),
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      courses: allCourses,
+      enrolledCourses: [],
+      availableCourses: allCourses,
+      enrolledCourseIds: [],
+    });
   } catch (err: unknown) {
     return NextResponse.json(
       { success: false, message: err instanceof Error ? err.message : "Error listing courses" },

@@ -103,17 +103,25 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        // Auto-enroll student into the session's course
+        // Verify student course enrollment
         if (sessionData.course_id) {
-          try {
-            await supabase
-              .from("course_enrollments")
-              .upsert(
-                [{ course_id: sessionData.course_id, student_id: studentId }],
-                { onConflict: "course_id,student_id", ignoreDuplicates: true },
-              );
-          } catch {
-            // Non-fatal if enrollment exists
+          const { data: enrollment } = await supabase
+            .from("course_enrollments")
+            .select("course_id")
+            .eq("course_id", sessionData.course_id)
+            .eq("student_id", studentId)
+            .maybeSingle();
+
+          if (!enrollment) {
+            return NextResponse.json(
+              {
+                success: false,
+                code: "NOT_ENROLLED",
+                message:
+                  "You are not enrolled in the course for this session. Please enroll in the course first.",
+              },
+              { status: 403 },
+            );
           }
         }
 
