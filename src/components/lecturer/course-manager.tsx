@@ -15,7 +15,7 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { useToast } from "@/components/ui/toast";
-import { BookOpen, Plus, Trash2, UserCheck, GraduationCap, Users } from "lucide-react";
+import { BookOpen, Plus, Trash2, UserCheck, GraduationCap, Users, X } from "lucide-react";
 
 interface CourseManagerProps {
   initialCourses: Course[];
@@ -126,8 +126,13 @@ export function CourseManager({
             Manage course listings, curriculum codes, and authorized attendance tracks.
           </p>
         </div>
-        <Button onClick={() => setShowAddForm(!showAddForm)} size="sm">
-          <Plus className="w-4 h-4" />
+        <Button
+          onClick={() => setShowAddForm(!showAddForm)}
+          size="sm"
+          variant={showAddForm ? "outline" : "primary"}
+          className="gap-1.5"
+        >
+          {showAddForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {showAddForm ? "Cancel" : "Add Course"}
         </Button>
       </div>
@@ -175,7 +180,9 @@ export function CourseManager({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowAddForm(false)}
+                className="gap-1.5"
               >
+                <X className="w-4 h-4" />
                 Cancel
               </Button>
               <Button type="submit" size="sm" isLoading={isSubmitting}>

@@ -17,6 +17,7 @@ import {
   AlertCircle,
   Sparkles,
   CheckCircle2,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { calculateHaversineDistance } from "@/lib/geo/distance";
@@ -507,8 +508,9 @@ export function CreateSessionModal({
               size="sm"
               onClick={onClose}
               disabled={isSubmitting}
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto gap-1.5"
             >
+              <X className="w-3.5 h-3.5" />
               Cancel
             </Button>
             <Button

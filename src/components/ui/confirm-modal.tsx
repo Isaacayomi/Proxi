@@ -3,7 +3,7 @@
 import React from "react";
 import { Modal } from "./modal";
 import { Button } from "./button";
-import { AlertTriangle, StopCircle } from "lucide-react";
+import { AlertTriangle, StopCircle, X } from "lucide-react";
 
 export interface ConfirmModalProps {
   isOpen: boolean;
@@ -64,8 +64,9 @@ export function ConfirmModal({
             size="sm"
             onClick={onClose}
             disabled={isLoading}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto gap-1.5"
           >
+            <X className="w-3.5 h-3.5" />
             {cancelText}
           </Button>
           <Button

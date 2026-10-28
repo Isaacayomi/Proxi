@@ -19,6 +19,7 @@ import {
   Users,
   Building2,
   RefreshCw,
+  X,
 } from "lucide-react";
 
 interface FacultyKeysModalProps {
@@ -174,13 +175,14 @@ export function FacultyKeysModal({
 
             <Button
               size="sm"
+              variant={showAddForm ? "outline" : "primary"}
               onClick={() => {
                 setShowAddForm(!showAddForm);
                 if (!showAddForm && !customCode) handleGenerateRandomCode();
               }}
-              className="shrink-0"
+              className="shrink-0 gap-1.5 text-xs"
             >
-              <Plus className="w-3.5 h-3.5" />
+              {showAddForm ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
               {showAddForm ? "Cancel" : "Generate Key"}
             </Button>
           </div>
@@ -255,7 +257,9 @@ export function FacultyKeysModal({
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowAddForm(false)}
+                  className="gap-1.5"
                 >
+                  <X className="w-3.5 h-3.5" />
                   Cancel
                 </Button>
                 <Button type="submit" size="sm" isLoading={isSubmitting}>

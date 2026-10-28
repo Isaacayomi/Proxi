@@ -15,7 +15,7 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { useToast } from "@/components/ui/toast";
-import { MapPin, Plus, Trash2, Building2, Navigation, CheckCircle2 } from "lucide-react";
+import { MapPin, Plus, Trash2, Building2, Navigation, CheckCircle2, X } from "lucide-react";
 
 interface ClassroomManagerProps {
   initialClassrooms: Classroom[];
@@ -163,8 +163,13 @@ export function ClassroomManager({ initialClassrooms }: ClassroomManagerProps) {
             Configure physical lecture theatres and anchor coordinates for proximity roll calls.
           </p>
         </div>
-        <Button onClick={() => setShowAddForm(!showAddForm)} size="sm">
-          <Plus className="w-4 h-4" />
+        <Button
+          onClick={() => setShowAddForm(!showAddForm)}
+          size="sm"
+          variant={showAddForm ? "outline" : "primary"}
+          className="gap-1.5"
+        >
+          {showAddForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {showAddForm ? "Cancel" : "Add Classroom"}
         </Button>
       </div>
@@ -259,7 +264,9 @@ export function ClassroomManager({ initialClassrooms }: ClassroomManagerProps) {
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowAddForm(false)}
+                className="gap-1.5"
               >
+                <X className="w-4 h-4" />
                 Cancel
               </Button>
               <Button type="submit" size="sm" isLoading={isSubmitting}>
