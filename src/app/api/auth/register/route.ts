@@ -59,6 +59,23 @@ export async function POST(req: NextRequest) {
     let verifiedAt: string | null = null;
 
     if (cleanRole === "lecturer") {
+      // Reject student email addresses from registering as academic staff
+      if (
+        cleanEmail.endsWith("@student.oauife.edu.ng") ||
+        cleanEmail.includes(".student.") ||
+        cleanEmail.startsWith("student.")
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            code: "STUDENT_EMAIL_FORBIDDEN_FOR_FACULTY",
+            message:
+              "Institutional student email addresses (@student.oauife.edu.ng) cannot be registered as faculty or lecturer accounts.",
+          },
+          { status: 403 },
+        );
+      }
+
       let isKeyValid = false;
       const cleanKeyCode = staffVerificationCode
         ? staffVerificationCode.trim().toUpperCase()

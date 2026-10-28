@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "create-key": "node scripts/create-faculty-key.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },
