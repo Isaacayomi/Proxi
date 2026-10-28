@@ -26,7 +26,11 @@ function parseArgs() {
     if (arg.startsWith("--dept=")) {
       options.dept = arg.split("=")[1].replace(/['"]/g, "").trim();
     } else if (arg.startsWith("--code=")) {
-      options.code = arg.split("=")[1].replace(/['"]/g, "").trim().toUpperCase();
+      options.code = arg
+        .split("=")[1]
+        .replace(/['"]/g, "")
+        .trim()
+        .toUpperCase();
     } else if (arg.startsWith("--note=")) {
       options.note = arg.split("=")[1].replace(/['"]/g, "").trim();
     } else if (arg === "--single-use") {
@@ -57,6 +61,8 @@ INSERT INTO public.faculty_verification_keys (key_code, department, note, max_us
 VALUES ('${keyCode}', '${opts.dept}', '${opts.note}', ${maxUses}, TRUE)
 ON CONFLICT (key_code) DO NOTHING;
 `);
-console.log("2. Or add to server environment variable (.env.local / hosting settings):");
+console.log(
+  "2. Or add to server environment variable (.env.local / hosting settings):",
+);
 console.log(`LECTURER_VERIFICATION_CODE=${keyCode}\n`);
 console.log("=================================================\n");
