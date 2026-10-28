@@ -37,16 +37,72 @@ class AttendanceStore {
   private facultyKeys = new Map<string, FacultyVerificationKey>();
 
   constructor() {
-    this.facultyKeys.set("fk-default", {
-      id: "fk-default",
-      key_code: "OAU-FACULTY-2026",
-      department: "Faculty of Technology",
-      note: "Default Institutional Master Key",
-      max_uses: null,
-      used_count: 0,
-      is_active: true,
-      created_at: new Date().toISOString(),
-    });
+    const initialKeys: FacultyVerificationKey[] = [
+      {
+        id: "fk-cse",
+        key_code: "OAU-CSE-2026",
+        department: "Computer Science & Engineering",
+        note: "Departmental Authorization Key",
+        max_uses: null,
+        used_count: 0,
+        is_active: true,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "fk-eee",
+        key_code: "OAU-EEE-2026",
+        department: "Electronic & Electrical Engineering",
+        note: "Departmental Authorization Key",
+        max_uses: null,
+        used_count: 0,
+        is_active: true,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "fk-mee",
+        key_code: "OAU-MEE-2026",
+        department: "Mechanical Engineering",
+        note: "Departmental Authorization Key",
+        max_uses: null,
+        used_count: 0,
+        is_active: true,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "fk-cve",
+        key_code: "OAU-CVE-2026",
+        department: "Civil Engineering",
+        note: "Departmental Authorization Key",
+        max_uses: null,
+        used_count: 0,
+        is_active: true,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "fk-che",
+        key_code: "OAU-CHE-2026",
+        department: "Chemical Engineering",
+        note: "Departmental Authorization Key",
+        max_uses: null,
+        used_count: 0,
+        is_active: true,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "fk-default",
+        key_code: "OAU-FACULTY-2026",
+        department: "Faculty of Technology (General)",
+        note: "Institutional Master Key",
+        max_uses: null,
+        used_count: 0,
+        is_active: true,
+        created_at: new Date().toISOString(),
+      },
+    ];
+
+    for (const key of initialKeys) {
+      this.facultyKeys.set(key.id, key);
+    }
   }
 
   seedTestData() {

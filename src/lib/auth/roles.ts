@@ -33,9 +33,17 @@ export function inferRoleFromEmail(email: string): UserRole {
 }
 
 /**
- * Standard faculty verification code required to register as academic staff.
- * Default fallback is "OAU-FACULTY-2026", customizable via env variable.
+ * Standard faculty verification codes required to register as academic staff.
+ * Pre-seeded for individual departments across Faculty of Technology, customizable via env variable.
  */
+export const DEFAULT_DEPARTMENT_CODES = [
+  "OAU-CSE-2026", // Computer Science & Engineering
+  "OAU-EEE-2026", // Electronic & Electrical Engineering
+  "OAU-MEE-2026", // Mechanical Engineering
+  "OAU-CVE-2026", // Civil Engineering
+  "OAU-CHE-2026", // Chemical Engineering
+  "OAU-FACULTY-2026", // Faculty of Technology (General Master Key)
+];
 export const DEFAULT_FACULTY_CODE = "OAU-FACULTY-2026";
 
 export function isValidFacultyVerificationCode(code: string | null | undefined): boolean {
@@ -43,17 +51,14 @@ export function isValidFacultyVerificationCode(code: string | null | undefined):
   const inputCode = code.trim().toUpperCase();
   const envVal = process.env.LECTURER_VERIFICATION_CODE;
 
-  if (!envVal) {
-    return inputCode === DEFAULT_FACULTY_CODE;
-  }
-
-  // Supports single key or comma-separated list of departmental keys
   const allowedKeys = envVal
-    .split(",")
-    .map((k) => k.trim().toUpperCase())
-    .filter(Boolean);
+    ? envVal
+        .split(",")
+        .map((k) => k.trim().toUpperCase())
+        .filter(Boolean)
+    : [];
 
-  return allowedKeys.includes(inputCode) || inputCode === DEFAULT_FACULTY_CODE;
+  return allowedKeys.includes(inputCode) || DEFAULT_DEPARTMENT_CODES.includes(inputCode);
 }
 
 /**

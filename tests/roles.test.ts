@@ -44,6 +44,9 @@ describe("Role Authorization & Matric Number Validation", () => {
   it("validates faculty staff verification code", () => {
     expect(isValidFacultyVerificationCode("OAU-FACULTY-2026")).toBe(true);
     expect(isValidFacultyVerificationCode("oau-faculty-2026")).toBe(true);
+    expect(isValidFacultyVerificationCode("OAU-CSE-2026")).toBe(true);
+    expect(isValidFacultyVerificationCode("OAU-EEE-2026")).toBe(true);
+    expect(isValidFacultyVerificationCode("OAU-MEE-2026")).toBe(true);
     expect(isValidFacultyVerificationCode("INVALID-KEY")).toBe(false);
     expect(isValidFacultyVerificationCode("")).toBe(false);
     expect(isValidFacultyVerificationCode(null)).toBe(false);
@@ -113,10 +116,13 @@ describe("CSV Export Utilities", () => {
 });
 
 describe("Dynamic Faculty Verification Keys Management", () => {
-  it("initializes with default faculty master key", () => {
+  it("initializes with default departmental and faculty master keys", () => {
     const keys = db.listFacultyKeys();
-    expect(keys.length).toBeGreaterThanOrEqual(1);
+    expect(keys.length).toBeGreaterThanOrEqual(6);
     expect(keys.some((k) => k.key_code === "OAU-FACULTY-2026")).toBe(true);
+    expect(keys.some((k) => k.key_code === "OAU-CSE-2026")).toBe(true);
+    expect(keys.some((k) => k.key_code === "OAU-EEE-2026")).toBe(true);
+    expect(keys.some((k) => k.key_code === "OAU-MEE-2026")).toBe(true);
   });
 
   it("creates custom faculty verification key with usage limits and department", () => {

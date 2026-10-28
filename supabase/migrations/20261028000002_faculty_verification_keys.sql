@@ -60,8 +60,14 @@ USING (
     )
 );
 
--- Seed default initial institutional key
+-- Seed initial departmental verification keys
 INSERT INTO public.faculty_verification_keys (key_code, department, note, max_uses, is_active)
-VALUES ('OAU-FACULTY-2026', 'Faculty of Technology', 'Default Institutional Master Key', NULL, TRUE)
+VALUES
+    ('OAU-CSE-2026', 'Computer Science & Engineering', 'Departmental Authorization Key', NULL, TRUE),
+    ('OAU-EEE-2026', 'Electronic & Electrical Engineering', 'Departmental Authorization Key', NULL, TRUE),
+    ('OAU-MEE-2026', 'Mechanical Engineering', 'Departmental Authorization Key', NULL, TRUE),
+    ('OAU-CVE-2026', 'Civil Engineering', 'Departmental Authorization Key', NULL, TRUE),
+    ('OAU-CHE-2026', 'Chemical Engineering', 'Departmental Authorization Key', NULL, TRUE),
+    ('OAU-FACULTY-2026', 'Faculty of Technology (General)', 'Institutional Master Key', NULL, TRUE)
 ON CONFLICT (key_code) DO NOTHING;
 
