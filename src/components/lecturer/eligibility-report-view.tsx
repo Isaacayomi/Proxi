@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert } from "@/components/ui/alert";
 import {
   FileText,
   Download,
@@ -45,6 +46,8 @@ export function EligibilityReportView({
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTab, setFilterTab] = useState<"all" | "eligible" | "ineligible">("all");
   const [isExcusingStudentId, setIsExcusingStudentId] = useState<string | null>(null);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   // Auto-select first course when courses load
   useEffect(() => {
@@ -104,6 +107,37 @@ export function EligibilityReportView({
       // ignore
     } finally {
       setIsExcusingStudentId(null);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!selectedCourseId) return;
+    setIsDownloadingPdf(true);
+    setDownloadError(null);
+    try {
+      const url = `/api/attendance/eligibility/pdf?courseId=${selectedCourseId}&threshold=${threshold}${
+        lecturerId ? `&lecturerId=${lecturerId}` : ""
+      }`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        throw new Error(errJson?.message || `Download failed with HTTP ${res.status}`);
+      }
+
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      const safeCode = (report?.courseCode || "Course").replace(/[^a-zA-Z0-9]/g, "_");
+      link.download = `ProxiCheck_Exam_Eligibility_${safeCode}_${threshold}Pct.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err: unknown) {
+      setDownloadError(err instanceof Error ? err.message : "Failed to download PDF docket");
+    } finally {
+      setIsDownloadingPdf(false);
     }
   };
 
@@ -199,23 +233,25 @@ export function EligibilityReportView({
                 Refresh
               </Button>
 
-              <a
-                href={pdfDownloadUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex"
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleDownloadPdf}
+                isLoading={isDownloadingPdf}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xs flex items-center gap-1.5"
+                title="Download official PDF examination docket"
               >
-                <Button
-                  variant="primary"
-                  size="sm"
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xs flex items-center gap-1.5"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Download Official PDF Docket
-                </Button>
-              </a>
+                <Download className="w-3.5 h-3.5" />
+                Download Official PDF Docket
+              </Button>
             </div>
           </div>
+
+          {downloadError && (
+            <Alert variant="error" title="Download Notice" className="mt-4">
+              {downloadError}
+            </Alert>
+          )}
         </CardContent>
       </Card>
 

@@ -306,5 +306,12 @@ describe("75% Examination Eligibility & Manual Overrides Policy", () => {
     expect(pdfBuffer.length).toBeGreaterThan(100);
     // Check PDF header signature "%PDF"
     expect(pdfBuffer.subarray(0, 4).toString("ascii")).toBe("%PDF");
+
+    const pdfString = pdfBuffer.toString("latin1");
+    expect(pdfString).toContain("/Type /Catalog");
+    expect(pdfString).toContain("OBAFEMI AWOLOWO UNIVERSITY");
+    expect(pdfString).toContain("CSC 401");
+    expect(pdfString).toContain("ELIGIBLE");
+    expect(pdfString).toContain("%%EOF");
   });
 });

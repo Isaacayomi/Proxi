@@ -1,158 +1,248 @@
 import { CourseEligibilityReport } from "@/types/database";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import fs from "node:fs/promises";
-import path from "node:path";
-import os from "node:os";
 
-const execFileAsync = promisify(execFile);
-
-function escapePs(str: string): string {
+function escapePdf(str: string): string {
   if (!str) return "";
-  return str.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+  return String(str)
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)")
+    .replace(/[^\x20-\x7E]/g, " ");
 }
 
-export async function generateEligibilityDocketPdf(report: CourseEligibilityReport): Promise<Buffer> {
-  const tmpDir = os.tmpdir();
-  const id = "docket_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7);
-  const psPath = path.join(tmpDir, `${id}.ps`);
-  const pdfPath = path.join(tmpDir, `${id}.pdf`);
+class PdfStreamBuilder {
+  private content: string[] = [];
 
+  fillColor(r: number, g: number, b: number) {
+    this.content.push(`${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} rg`);
+  }
+
+  strokeColor(r: number, g: number, b: number) {
+    this.content.push(`${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} RG`);
+  }
+
+  lineWidth(w: number) {
+    this.content.push(`${w.toFixed(2)} w`);
+  }
+
+  line(x1: number, y1: number, x2: number, y2: number) {
+    this.content.push(
+      `${x1.toFixed(2)} ${y1.toFixed(2)} m ${x2.toFixed(2)} ${y2.toFixed(2)} l S`,
+    );
+  }
+
+  rectFill(x: number, y: number, w: number, h: number) {
+    this.content.push(
+      `${x.toFixed(2)} ${y.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re f`,
+    );
+  }
+
+  rectStroke(x: number, y: number, w: number, h: number) {
+    this.content.push(
+      `${x.toFixed(2)} ${y.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re S`,
+    );
+  }
+
+  text(
+    str: string,
+    x: number,
+    y: number,
+    font: "F1" | "F2" = "F1",
+    size: number = 8,
+  ) {
+    const esc = escapePdf(str);
+    this.content.push(
+      `BT /${font} ${size} Tf ${x.toFixed(2)} ${y.toFixed(2)} Td (${esc}) Tj ET`,
+    );
+  }
+
+  build(): string {
+    return this.content.join("\n");
+  }
+}
+
+/**
+ * Pure TypeScript / Node.js in-memory Vector PDF Docket Generator.
+ * Requires ZERO external native binaries (such as ps2pdf or Ghostscript),
+ * guaranteeing 100% compatibility in Vercel Serverless Functions and containerized environments.
+ */
+export async function generateEligibilityDocketPdf(
+  report: CourseEligibilityReport,
+): Promise<Buffer> {
   const studentsPerPage = 22;
-  const totalPages = Math.max(1, Math.ceil(report.students.length / studentsPerPage));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(report.students.length / studentsPerPage),
+  );
 
-  const psLines: string[] = [
-    "%!PS-Adobe-3.0",
-    `%%Pages: ${totalPages}`,
-    "%%BoundingBox: 0 0 595 842",
-    "/rectfill {",
-    "  4 2 roll moveto 1 index 0 rlineto 0 exch rlineto neg 0 rlineto closepath fill",
-    "} bind def",
-  ];
+  const pageStreams: string[] = [];
 
   for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
     const pageNum = pageIdx + 1;
     const isFirstPage = pageNum === 1;
-    psLines.push(`%%Page: ${pageNum} ${pageNum}`);
-    psLines.push("save");
+    const p = new PdfStreamBuilder();
 
-    // Header & Footer
-    psLines.push("0.3 setgray");
-    psLines.push("/Helvetica-Bold 8 selectfont");
-    psLines.push("50 800 moveto (OBAFEMI AWOLOWO UNIVERSITY | EXAM ATTENDANCE DOCKET) show");
-    psLines.push("/Helvetica 8 selectfont");
-    psLines.push("460 800 moveto (" + escapePs(report.courseCode) + " Docket) show");
-    psLines.push("50 794 moveto 545 794 lineto 0.6 setlinewidth stroke");
+    // 1. Running Header & Footer
+    p.strokeColor(0.8, 0.8, 0.8);
+    p.lineWidth(0.6);
+    p.line(50, 794, 545, 794);
 
-    psLines.push("50 45 moveto 545 45 lineto 0.6 setlinewidth stroke");
-    psLines.push("50 35 moveto (ProxiCheck Academic Verification System - Official Institutional Audit Docket) show");
-    psLines.push(`/Helvetica-Bold 8 selectfont`);
-    psLines.push(`490 35 moveto (Page ${pageNum} of ${totalPages}) show`);
+    p.fillColor(0.3, 0.3, 0.3);
+    p.text(
+      "OBAFEMI AWOLOWO UNIVERSITY | EXAM ATTENDANCE DOCKET",
+      50,
+      800,
+      "F2",
+      8,
+    );
+    p.text(`${report.courseCode} Docket`, 460, 800, "F1", 8);
+
+    // Footer
+    p.line(50, 45, 545, 45);
+    p.fillColor(0.4, 0.4, 0.4);
+    p.text(
+      "ProxiCheck Academic Verification System - Official Institutional Audit Docket",
+      50,
+      35,
+      "F1",
+      7.5,
+    );
+    p.text(`Page ${pageNum} of ${totalPages}`, 485, 35, "F2", 8);
 
     let y = 770;
 
     if (isFirstPage) {
-      // University & Document Title
-      psLines.push("0.05 0.15 0.35 setrgbcolor");
-      psLines.push("/Helvetica-Bold 15 selectfont");
-      psLines.push(`50 ${y} moveto (OBAFEMI AWOLOWO UNIVERSITY, ILE-IFE) show`);
+      // University Title & Document Banner
+      p.fillColor(0.05, 0.15, 0.35);
+      p.text("OBAFEMI AWOLOWO UNIVERSITY, ILE-IFE", 50, y, "F2", 15);
       y -= 16;
-      psLines.push("/Helvetica-Bold 11 selectfont");
-      psLines.push(`50 ${y} moveto (OFFICIAL EXAMINATION ATTENDANCE ELIGIBILITY DOCKET) show`);
+
+      p.fillColor(0.1, 0.1, 0.1);
+      p.text(
+        "OFFICIAL EXAMINATION ATTENDANCE ELIGIBILITY DOCKET",
+        50,
+        y,
+        "F2",
+        11,
+      );
       y -= 14;
-      psLines.push("0.35 0.35 0.35 setrgbcolor");
-      psLines.push("/Helvetica 9 selectfont");
-      psLines.push(`50 ${y} moveto (Academic Session 2026/2027 • Department of Computer Science & Engineering) show`);
+
+      p.fillColor(0.35, 0.35, 0.35);
+      p.text(
+        `Academic Session 2026/2027 • Department of ${report.department || "Computer Science and Engineering"}`,
+        50,
+        y,
+        "F1",
+        8.5,
+      );
       y -= 12;
-      psLines.push("0.1 0.55 0.45 setrgbcolor");
-      psLines.push(`50 ${y} moveto 545 ${y} lineto 1.5 setlinewidth stroke`);
+
+      // Decorative divider bar
+      p.strokeColor(0.1, 0.55, 0.45);
+      p.lineWidth(1.5);
+      p.line(50, y, 545, y);
       y -= 16;
 
       // Metadata Block (2 columns)
-      psLines.push("0.96 0.97 0.98 setrgbcolor");
-      psLines.push(`50 ${y - 48} 495 56 rectfill`);
-      psLines.push("0.8 0.85 0.9 setrgbcolor");
-      psLines.push(`50 ${y - 48} moveto 545 ${y - 48} lineto 545 ${y + 8} lineto 50 ${y + 8} lineto closepath 0.5 setlinewidth stroke`);
+      p.fillColor(0.96, 0.97, 0.98);
+      p.rectFill(50, y - 48, 495, 56);
+      p.strokeColor(0.8, 0.85, 0.9);
+      p.lineWidth(0.6);
+      p.rectStroke(50, y - 48, 495, 56);
 
-      psLines.push("0.1 0.1 0.1 setrgbcolor");
-      psLines.push("/Helvetica-Bold 8.5 selectfont");
-      psLines.push(`60 ${y} moveto (Course Code & Title:) show`);
-      psLines.push("/Helvetica 8.5 selectfont");
-      psLines.push(`165 ${y} moveto (${escapePs(report.courseCode + " - " + report.courseName)}) show`);
+      p.fillColor(0.1, 0.1, 0.1);
+      p.text("Course Code & Title:", 60, y, "F2", 8.5);
+      p.fillColor(0.15, 0.15, 0.15);
+      p.text(`${report.courseCode} - ${report.courseName}`, 165, y, "F1", 8.5);
 
-      psLines.push("/Helvetica-Bold 8.5 selectfont");
-      psLines.push(`330 ${y} moveto (Attendance Threshold:) show`);
-      psLines.push("/Helvetica-Bold 8.5 selectfont");
-      psLines.push("0.8 0.1 0.1 setrgbcolor");
-      psLines.push(`445 ${y} moveto (${report.thresholdPercent}% Minimum Required) show`);
-      psLines.push("0.1 0.1 0.1 setrgbcolor");
+      p.fillColor(0.1, 0.1, 0.1);
+      p.text("Attendance Threshold:", 330, y, "F2", 8.5);
+      p.fillColor(0.8, 0.1, 0.1);
+      p.text(`${report.thresholdPercent}% Minimum Required`, 445, y, "F2", 8.5);
 
       y -= 14;
-      psLines.push("/Helvetica-Bold 8.5 selectfont");
-      psLines.push(`60 ${y} moveto (Lecturer in Charge:) show`);
-      psLines.push("/Helvetica 8.5 selectfont");
-      psLines.push(`165 ${y} moveto (${escapePs(report.lecturerName + " (" + report.lecturerEmail + ")")}) show`);
+      p.fillColor(0.1, 0.1, 0.1);
+      p.text("Lecturer in Charge:", 60, y, "F2", 8.5);
+      p.fillColor(0.15, 0.15, 0.15);
+      p.text(`${report.lecturerName} (${report.lecturerEmail})`, 165, y, "F1", 8.5);
 
-      psLines.push("/Helvetica-Bold 8.5 selectfont");
-      psLines.push(`330 ${y} moveto (Date Range Held:) show`);
-      psLines.push("/Helvetica 8.5 selectfont");
+      p.fillColor(0.1, 0.1, 0.1);
+      p.text("Date Range Held:", 330, y, "F2", 8.5);
+      p.fillColor(0.15, 0.15, 0.15);
       const dateRangeText = report.dateRange.from
-        ? `${new Date(report.dateRange.from).toLocaleDateString()} to ${report.dateRange.to ? new Date(report.dateRange.to).toLocaleDateString() : "Present"}`
+        ? `${new Date(report.dateRange.from).toLocaleDateString()} to ${
+            report.dateRange.to
+              ? new Date(report.dateRange.to).toLocaleDateString()
+              : "Present"
+          }`
         : "Semester Session";
-      psLines.push(`445 ${y} moveto (${escapePs(dateRangeText)}) show`);
+      p.text(dateRangeText, 445, y, "F1", 8.5);
 
       y -= 14;
-      psLines.push("/Helvetica-Bold 8.5 selectfont");
-      psLines.push(`60 ${y} moveto (Generated Timestamp:) show`);
-      psLines.push("/Helvetica 8.5 selectfont");
-      psLines.push(`165 ${y} moveto (${escapePs(new Date(report.generatedAt).toLocaleString())}) show`);
+      p.fillColor(0.1, 0.1, 0.1);
+      p.text("Generated Timestamp:", 60, y, "F2", 8.5);
+      p.fillColor(0.15, 0.15, 0.15);
+      p.text(new Date(report.generatedAt).toLocaleString(), 165, y, "F1", 8.5);
 
-      psLines.push("/Helvetica-Bold 8.5 selectfont");
-      psLines.push(`330 ${y} moveto (Department:) show`);
-      psLines.push("/Helvetica 8.5 selectfont");
-      psLines.push(`445 ${y} moveto (${escapePs(report.department || "Technology")}) show`);
+      p.fillColor(0.1, 0.1, 0.1);
+      p.text("Department:", 330, y, "F2", 8.5);
+      p.fillColor(0.15, 0.15, 0.15);
+      p.text(report.department || "Faculty of Technology", 445, y, "F1", 8.5);
 
       y -= 26;
 
       // Summary Statistics (Horizontal stats banner)
-      psLines.push("0.92 0.95 0.98 setrgbcolor");
-      psLines.push(`50 ${y - 18} 495 24 rectfill`);
-      psLines.push("0.7 0.8 0.9 setrgbcolor");
-      psLines.push(`50 ${y - 18} moveto 545 ${y - 18} lineto 545 ${y + 6} lineto 50 ${y + 6} lineto closepath 0.5 setlinewidth stroke`);
+      p.fillColor(0.92, 0.95, 0.98);
+      p.rectFill(50, y - 18, 495, 24);
+      p.strokeColor(0.7, 0.8, 0.9);
+      p.lineWidth(0.6);
+      p.rectStroke(50, y - 18, 495, 24);
 
-      psLines.push("/Helvetica-Bold 8 selectfont");
-      psLines.push("0.1 0.2 0.35 setrgbcolor");
-      psLines.push(`60 ${y - 5} moveto (Total Enrolled: ${report.totalEnrolled}) show`);
-      psLines.push(`160 ${y - 5} moveto (Sessions Held: ${report.totalHeldSessions} (Cancelled: ${report.totalCancelledSessions})) show`);
-      psLines.push("0.05 0.45 0.25 setrgbcolor");
-      psLines.push(`315 ${y - 5} moveto (Eligible: ${report.totalEligible}) show`);
-      psLines.push("0.7 0.1 0.1 setrgbcolor");
-      psLines.push(`400 ${y - 5} moveto (Not Eligible: ${report.totalNotEligible}) show`);
-      psLines.push("0.1 0.1 0.1 setrgbcolor");
-      psLines.push(`480 ${y - 5} moveto (Rate: ${report.overallEligibilityRate}%) show`);
+      p.fillColor(0.1, 0.2, 0.35);
+      p.text(`Total Enrolled: ${report.totalEnrolled}`, 60, y - 5, "F2", 8);
+      p.text(
+        `Sessions Held: ${report.totalHeldSessions} (Cancelled: ${report.totalCancelledSessions})`,
+        155,
+        y - 5,
+        "F2",
+        8,
+      );
+
+      p.fillColor(0.05, 0.45, 0.25);
+      p.text(`Eligible: ${report.totalEligible}`, 320, y - 5, "F2", 8);
+
+      p.fillColor(0.7, 0.1, 0.1);
+      p.text(`Not Eligible: ${report.totalNotEligible}`, 405, y - 5, "F2", 8);
+
+      p.fillColor(0.1, 0.1, 0.1);
+      p.text(`Rate: ${report.overallEligibilityRate}%`, 485, y - 5, "F2", 8);
 
       y -= 30;
     } else {
       y = 750;
-      psLines.push("0.2 0.3 0.4 setrgbcolor");
-      psLines.push("/Helvetica-Bold 10 selectfont");
-      psLines.push(`50 ${y} moveto (${escapePs(report.courseCode + " - " + report.courseName)} • Examination Roster Continued) show`);
+      p.fillColor(0.2, 0.3, 0.4);
+      p.text(
+        `${report.courseCode} - ${report.courseName} • Examination Roster Continued`,
+        50,
+        y,
+        "F2",
+        10,
+      );
       y -= 18;
     }
 
     // Table Header
-    psLines.push("0.15 0.2 0.3 setrgbcolor");
-    psLines.push(`50 ${y - 4} 495 16 rectfill`);
-    psLines.push("1 1 1 setrgbcolor");
-    psLines.push("/Helvetica-Bold 8 selectfont");
-    psLines.push(`55 ${y} moveto (#) show`);
-    psLines.push(`75 ${y} moveto (MATRIC NUMBER) show`);
-    psLines.push(`170 ${y} moveto (STUDENT FULL NAME) show`);
-    psLines.push(`330 ${y} moveto (HELD) show`);
-    psLines.push(`365 ${y} moveto (ATTENDED) show`);
-    psLines.push(`415 ${y} moveto (EXCUSED) show`);
-    psLines.push(`460 ${y} moveto (RATE) show`);
-    psLines.push(`495 ${y} moveto (EXAM STATUS) show`);
+    p.fillColor(0.15, 0.2, 0.3);
+    p.rectFill(50, y - 4, 495, 16);
+
+    p.fillColor(1, 1, 1);
+    p.text("#", 55, y, "F2", 7.5);
+    p.text("MATRIC NUMBER", 75, y, "F2", 7.5);
+    p.text("STUDENT FULL NAME", 170, y, "F2", 7.5);
+    p.text("HELD", 330, y, "F2", 7.5);
+    p.text("ATTENDED", 365, y, "F2", 7.5);
+    p.text("EXCUSED", 415, y, "F2", 7.5);
+    p.text("RATE", 460, y, "F2", 7.5);
+    p.text("EXAM STATUS", 495, y, "F2", 7.5);
 
     y -= 14;
 
@@ -167,71 +257,106 @@ export async function generateEligibilityDocketPdf(report: CourseEligibilityRepo
 
       // Alternating row background
       if (i % 2 === 1) {
-        psLines.push("0.97 0.98 0.99 setrgbcolor");
-        psLines.push(`50 ${y - 3} 495 13 rectfill`);
+        p.fillColor(0.97, 0.98, 0.99);
+        p.rectFill(50, y - 3, 495, 13);
       }
 
-      psLines.push("0.15 0.15 0.15 setrgbcolor");
-      psLines.push("/Helvetica 7.5 selectfont");
-      psLines.push(`55 ${y} moveto (${rowNum}) show`);
-      psLines.push("/Helvetica-Bold 7.5 selectfont");
-      psLines.push(`75 ${y} moveto (${escapePs(stud.matricNumber)}) show`);
-      psLines.push("/Helvetica 7.5 selectfont");
-      psLines.push(`170 ${y} moveto (${escapePs(stud.studentName.substring(0, 26))}) show`);
-      psLines.push(`335 ${y} moveto (${stud.totalHeldSessions}) show`);
-      psLines.push(`375 ${y} moveto (${stud.presentCount}) show`);
-      psLines.push(`425 ${y} moveto (${stud.excusedCount}) show`);
-      psLines.push(`465 ${y} moveto (${stud.attendanceRate}%) show`);
+      p.fillColor(0.15, 0.15, 0.15);
+      p.text(String(rowNum), 55, y, "F1", 7.5);
+      p.text(stud.matricNumber || "N/A", 75, y, "F2", 7.5);
+      p.text(stud.studentName.substring(0, 26), 170, y, "F1", 7.5);
+      p.text(String(stud.totalHeldSessions), 335, y, "F1", 7.5);
+      p.text(String(stud.presentCount), 375, y, "F1", 7.5);
+      p.text(String(stud.excusedCount), 425, y, "F1", 7.5);
+      p.text(`${stud.attendanceRate}%`, 465, y, "F1", 7.5);
 
-      // Requirement 3: EXAM STATUS column explicitly prints "ELIGIBLE" or "NOT ELIGIBLE" in bold for B&W print clarity
+      // Requirement 3: Explicit bold text column ELIGIBLE or NOT ELIGIBLE for monochrome print clarity
       if (stud.isEligible) {
-        psLines.push("0.05 0.45 0.2 setrgbcolor");
-        psLines.push("/Helvetica-Bold 7.5 selectfont");
-        psLines.push(`495 ${y} moveto (ELIGIBLE) show`);
+        p.fillColor(0.05, 0.45, 0.2);
+        p.text("ELIGIBLE", 495, y, "F2", 7.5);
       } else {
-        psLines.push("0.75 0.05 0.05 setrgbcolor");
-        psLines.push("/Helvetica-Bold 7.5 selectfont");
-        psLines.push(`495 ${y} moveto (NOT ELIGIBLE) show`);
+        p.fillColor(0.75, 0.05, 0.05);
+        p.text("NOT ELIGIBLE", 495, y, "F2", 7.5);
       }
 
       // Thin separator
-      psLines.push("0.88 0.88 0.88 setrgbcolor");
-      psLines.push(`50 ${y - 3} moveto 545 ${y - 3} lineto 0.4 setlinewidth stroke`);
+      p.strokeColor(0.88, 0.88, 0.88);
+      p.lineWidth(0.4);
+      p.line(50, y - 3, 545, y - 3);
       y -= 13;
     }
 
     // If on the last page, draw the Signatures block
     if (pageNum === totalPages) {
       y = Math.min(y - 20, 110);
-      psLines.push("0.2 setgray");
-      psLines.push("/Helvetica-Bold 8 selectfont");
-      psLines.push(`60 ${y} moveto (Course Lecturer Signature:) show`);
-      psLines.push(`60 ${y - 18} moveto (____________________________________) show`);
-      psLines.push("/Helvetica 7.5 selectfont");
-      psLines.push(`60 ${y - 28} moveto (Date: ____ / ____ / 2026) show`);
+      p.fillColor(0.2, 0.2, 0.2);
+      p.text("Course Lecturer Signature:", 60, y, "F2", 8);
+      p.text("____________________________________", 60, y - 18, "F1", 8);
+      p.text("Date: ____ / ____ / 2026", 60, y - 28, "F1", 7.5);
 
-      psLines.push("/Helvetica-Bold 8 selectfont");
-      psLines.push(`340 ${y} moveto (Head of Department (HOD) Signature:) show`);
-      psLines.push(`340 ${y - 18} moveto (____________________________________) show`);
-      psLines.push("/Helvetica 7.5 selectfont");
-      psLines.push(`340 ${y - 28} moveto (Date: ____ / ____ / 2026) show`);
+      p.text("Head of Department (HOD) Signature:", 340, y, "F2", 8);
+      p.text("____________________________________", 340, y - 18, "F1", 8);
+      p.text("Date: ____ / ____ / 2026", 340, y - 28, "F1", 7.5);
     }
 
-    psLines.push("showpage");
-    psLines.push("restore");
+    pageStreams.push(p.build());
   }
 
-  const psContent = psLines.join("\n");
-  await fs.writeFile(psPath, psContent, "latin1");
+  // ---------------------------------------------------------------------------
+  // Assemble Pure PDF 1.4 Binary Document Structure
+  // ---------------------------------------------------------------------------
+  const pageCount = pageStreams.length;
+  const font1Id = 3 + pageCount * 2;
+  const font2Id = font1Id + 1;
+  const totalObjs = font2Id;
 
-  try {
-    await execFileAsync("ps2pdf", [psPath, pdfPath]);
-    const pdfBuffer = await fs.readFile(pdfPath);
-    return pdfBuffer;
-  } finally {
-    // Cleanup temporary files
-    await fs.unlink(psPath).catch(() => {});
-    await fs.unlink(pdfPath).catch(() => {});
+  const pageObjIds: number[] = [];
+  for (let i = 0; i < pageCount; i++) {
+    pageObjIds.push(3 + i * 2);
   }
+
+  const objStrings: string[] = [];
+
+  // Obj 1: Catalog
+  objStrings[1] = `1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj`;
+
+  // Obj 2: Pages
+  objStrings[2] = `2 0 obj\n<< /Type /Pages /Kids [${pageObjIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageCount} >>\nendobj`;
+
+  // Page and Content objects
+  for (let i = 0; i < pageCount; i++) {
+    const pageId = 3 + i * 2;
+    const contentId = pageId + 1;
+    const stream = pageStreams[i];
+    const streamBytes = Buffer.from(stream, "latin1");
+
+    objStrings[pageId] = `${pageId} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 ${font1Id} 0 R /F2 ${font2Id} 0 R >> >> /Contents ${contentId} 0 R >>\nendobj`;
+    objStrings[contentId] = `${contentId} 0 obj\n<< /Length ${streamBytes.length} >>\nstream\n${stream}\nendstream\nendobj`;
+  }
+
+  // Font 1: Helvetica (Regular)
+  objStrings[font1Id] = `${font1Id} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\nendobj`;
+
+  // Font 2: Helvetica-Bold
+  objStrings[font2Id] = `${font2Id} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>\nendobj`;
+
+  // Assemble file with byte offset tracking for xref table
+  let out = `%PDF-1.4\n%\xE2\xE3\xCF\xD3\n`;
+  const offsets: number[] = [0];
+
+  for (let i = 1; i <= totalObjs; i++) {
+    offsets[i] = Buffer.byteLength(out, "latin1");
+    out += objStrings[i] + "\n";
+  }
+
+  const startXref = Buffer.byteLength(out, "latin1");
+  out += `xref\n0 ${totalObjs + 1}\n`;
+  out += `0000000000 65535 f \n`;
+  for (let i = 1; i <= totalObjs; i++) {
+    out += String(offsets[i]).padStart(10, "0") + ` 00000 n \n`;
+  }
+
+  out += `trailer\n<< /Size ${totalObjs + 1} /Root 1 0 R >>\nstartxref\n${startXref}\n%%EOF\n`;
+
+  return Buffer.from(out, "latin1");
 }
-
