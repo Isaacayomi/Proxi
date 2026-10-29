@@ -6,6 +6,11 @@ import {
   AttendanceSession,
   AttendanceRecord,
   VerificationResult,
+  StudentEligibility,
+  CourseEligibilityReport,
+  StudentCourseEligibilitySummary,
+  ExamEligibilityStatus,
+  EligibilityWarningTier,
 } from "@/types/database";
 import {
   evaluateGeofence,
@@ -165,6 +170,12 @@ class AttendanceStore {
 
     this.enrollStudentInCourse("d1111111-1111-1111-1111-111111111111", "u-student-1");
     this.enrollStudentInCourse("d1111111-1111-1111-1111-111111111111", "u-student-2");
+  }
+
+  reset() {
+    this.sessions.clear();
+    this.records.clear();
+    this.seedTestData();
   }
 
   // --- Profiles ---
@@ -360,6 +371,13 @@ class AttendanceStore {
     return courseIds.map((id) => this.courses.get(id)!).filter(Boolean);
   }
 
+  getCourseStudents(courseId: string): Profile[] {
+    const studentIds = this.enrollments
+      .filter((e) => e.course_id === courseId)
+      .map((e) => e.student_id);
+    return studentIds.map((id) => this.profiles.get(id)!).filter(Boolean);
+  }
+
   assignLecturerToCourse(courseId: string, lecturerId: string): void {
     if (
       !this.courseLecturers.some(
@@ -524,6 +542,19 @@ class AttendanceStore {
     return this.getSession(sessionId)!;
   }
 
+  cancelSession(sessionId: string, lecturerId?: string): AttendanceSession {
+    const session = this.sessions.get(sessionId);
+    if (!session) throw new Error("Session not found");
+    if (lecturerId && session.lecturer_id && session.lecturer_id !== lecturerId) {
+      throw new Error("Unauthorized to cancel this session");
+    }
+
+    session.status = "cancelled";
+    session.ends_at = new Date().toISOString();
+    this.sessions.set(sessionId, session);
+    return this.getSession(sessionId)!;
+  }
+
   // --- Attendance Verification & Records ---
   getAttendanceRecords(sessionId: string): AttendanceRecord[] {
     return Array.from(this.records.values())
@@ -551,6 +582,235 @@ class AttendanceStore {
           new Date(b.submitted_at).getTime() -
           new Date(a.submitted_at).getTime(),
       );
+  }
+
+  // --- Lecturer Overrides & Excused Absences ---
+  overrideAttendance(
+    sessionId: string,
+    studentId: string,
+    status: "present" | "excused" = "excused",
+    lecturerId?: string,
+    rejectionReason = "EXCUSED_ABSENCE",
+  ): AttendanceRecord {
+    const session = this.sessions.get(sessionId);
+    if (!session) throw new Error("Session not found");
+    if (lecturerId && session.lecturer_id && session.lecturer_id !== lecturerId) {
+      throw new Error("Unauthorized to modify attendance for this session");
+    }
+
+    const student = this.profiles.get(studentId);
+    if (!student) throw new Error("Student not found");
+
+    let existingRecord = Array.from(this.records.values()).find(
+      (r) => r.session_id === sessionId && r.student_id === studentId,
+    );
+
+    if (existingRecord) {
+      existingRecord.status = status;
+      existingRecord.rejection_reason = status === "excused" ? rejectionReason : null;
+      this.records.set(existingRecord.id, existingRecord);
+      return existingRecord;
+    }
+
+    const newRecord: AttendanceRecord = {
+      id: "rec-override-" + crypto.randomUUID(),
+      session_id: sessionId,
+      student_id: studentId,
+      matric_number: student.matric_number,
+      status,
+      distance_meters: 0,
+      reported_accuracy_meters: 0,
+      rejection_reason: status === "excused" ? rejectionReason : null,
+      submitted_at: new Date().toISOString(),
+      student,
+      session,
+    };
+
+    this.records.set(newRecord.id, newRecord);
+    return newRecord;
+  }
+
+  // --- 75% Exam Eligibility & At-Risk Predictor ---
+  getCourseEligibilityReport(
+    courseId: string,
+    lecturerId?: string,
+    thresholdPercent = 75,
+  ): CourseEligibilityReport {
+    const course = this.courses.get(courseId);
+    if (!course) throw new Error("Course not found");
+
+    const lecturer = lecturerId ? this.profiles.get(lecturerId) : null;
+    const lecturerName = lecturer?.first_name
+      ? `${lecturer.first_name} ${lecturer.last_name || ""}`.trim()
+      : "Course Lecturer";
+
+    // 1. Filter sessions for course: EXCLUDE cancelled sessions so cancelled classes don't hurt students
+    const allCourseSessions = Array.from(this.sessions.values()).filter(
+      (s) => s.course_id === courseId,
+    );
+    const heldSessions = allCourseSessions.filter((s) => s.status !== "cancelled");
+    const cancelledSessions = allCourseSessions.filter((s) => s.status === "cancelled");
+
+    const sortedHeld = [...heldSessions].sort(
+      (a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
+    );
+
+    const fromDate = sortedHeld.length > 0 ? sortedHeld[0].starts_at : null;
+    const toDate = sortedHeld.length > 0 ? sortedHeld[sortedHeld.length - 1].starts_at : null;
+
+    // 2. Enrolled students
+    const enrolledStudents = this.getCourseStudents(courseId);
+    const heldSessionIds = new Set(heldSessions.map((s) => s.id));
+
+    const students: StudentEligibility[] = enrolledStudents.map((stud: Profile) => {
+      // Find all records for this student in held sessions
+      const studentRecords = Array.from(this.records.values()).filter(
+        (r) => r.student_id === stud.id && heldSessionIds.has(r.session_id),
+      );
+
+      const presentCount = studentRecords.filter((r) => r.status === "present").length;
+      const excusedCount = studentRecords.filter(
+        (r) => r.status === "excused" || r.rejection_reason === "EXCUSED_ABSENCE",
+      ).length;
+
+      const attendedOrExcusedCount = presentCount + excusedCount;
+      const totalHeldSessions = heldSessions.length;
+
+      // Calculate attendance rate (if no held sessions yet, default to 100%)
+      const attendanceRate =
+        totalHeldSessions > 0
+          ? Math.min(100, Math.round(((attendedOrExcusedCount / totalHeldSessions) * 100) * 10) / 10)
+          : 100;
+
+      const isEligible = attendanceRate >= thresholdPercent;
+      const eligibilityStatus: ExamEligibilityStatus = isEligible ? "ELIGIBLE" : "NOT ELIGIBLE";
+
+      let warningTier: EligibilityWarningTier = "safe";
+      let warningMessage = `Cleared for Examinations: Attendance is in good standing (${attendanceRate}%).`;
+
+      if (attendanceRate < thresholdPercent) {
+        warningTier = "ineligible";
+        warningMessage = `Not Exam Eligible: Attendance is currently ${attendanceRate}% (below ${thresholdPercent}% requirement).`;
+      } else if (attendanceRate < thresholdPercent + 5) {
+        warningTier = "warning";
+        warningMessage = `Warning: Close to threshold! Current attendance is ${attendanceRate}%. Do not miss upcoming lectures to maintain clearance.`;
+      }
+
+      return {
+        studentId: stud.id,
+        matricNumber: stud.matric_number || "N/A",
+        studentName: `${stud.first_name || ""} ${stud.last_name || ""}`.trim() || stud.email,
+        studentEmail: stud.email,
+        totalHeldSessions,
+        presentCount,
+        excusedCount,
+        attendedOrExcusedCount,
+        attendanceRate,
+        isEligible,
+        eligibilityStatus,
+        warningTier,
+        warningMessage,
+      };
+    });
+
+    // Sort students by Matric Number, then Name
+    students.sort((a, b) => a.matricNumber.localeCompare(b.matricNumber));
+
+    const totalEnrolled = students.length;
+    const totalEligible = students.filter((s) => s.isEligible).length;
+    const totalNotEligible = totalEnrolled - totalEligible;
+    const overallEligibilityRate =
+      totalEnrolled > 0
+        ? Math.round(((totalEligible / totalEnrolled) * 100) * 10) / 10
+        : 100;
+
+    return {
+      courseId,
+      courseCode: course.code,
+      courseName: course.name,
+      department: course.department,
+      lecturerId: lecturerId || "",
+      lecturerName,
+      lecturerEmail: lecturer?.email || "",
+      generatedAt: new Date().toISOString(),
+      dateRange: {
+        from: fromDate,
+        to: toDate,
+      },
+      thresholdPercent,
+      totalHeldSessions: heldSessions.length,
+      totalCancelledSessions: cancelledSessions.length,
+      totalEnrolled,
+      totalEligible,
+      totalNotEligible,
+      overallEligibilityRate,
+      students,
+    };
+  }
+
+  getStudentCourseEligibilitySummaries(
+    studentId: string,
+    thresholdPercent = 75,
+  ): StudentCourseEligibilitySummary[] {
+    const student = this.profiles.get(studentId);
+    if (!student) return [];
+
+    const enrolledCourses = this.getStudentCourses(studentId);
+
+    return enrolledCourses.map((course) => {
+      const allCourseSessions = Array.from(this.sessions.values()).filter(
+        (s) => s.course_id === course.id,
+      );
+      const heldSessions = allCourseSessions.filter((s) => s.status !== "cancelled");
+      const heldSessionIds = new Set(heldSessions.map((s) => s.id));
+
+      const studentRecords = Array.from(this.records.values()).filter(
+        (r) => r.student_id === studentId && heldSessionIds.has(r.session_id),
+      );
+
+      const presentCount = studentRecords.filter((r) => r.status === "present").length;
+      const excusedCount = studentRecords.filter(
+        (r) => r.status === "excused" || r.rejection_reason === "EXCUSED_ABSENCE",
+      ).length;
+      const attendedOrExcusedCount = presentCount + excusedCount;
+      const totalHeldSessions = heldSessions.length;
+
+      const attendanceRate =
+        totalHeldSessions > 0
+          ? Math.min(100, Math.round(((attendedOrExcusedCount / totalHeldSessions) * 100) * 10) / 10)
+          : 100;
+
+      const isEligible = attendanceRate >= thresholdPercent;
+      const eligibilityStatus: ExamEligibilityStatus = isEligible ? "ELIGIBLE" : "NOT ELIGIBLE";
+
+      let warningTier: EligibilityWarningTier = "safe";
+      let warningMessage = `Cleared for Examinations: Attendance is in good standing (${attendanceRate}%).`;
+
+      if (attendanceRate < thresholdPercent) {
+        warningTier = "ineligible";
+        warningMessage = `Not Exam Eligible: Your attendance is currently ${attendanceRate}% (below the required ${thresholdPercent}%). Please contact your course lecturer.`;
+      } else if (attendanceRate < thresholdPercent + 5) {
+        warningTier = "warning";
+        warningMessage = `Warning: You are close to the ${thresholdPercent}% attendance limit (Current: ${attendanceRate}%). Do not miss upcoming lectures to maintain examination clearance.`;
+      }
+
+      return {
+        courseId: course.id,
+        courseCode: course.code,
+        courseName: course.name,
+        department: course.department,
+        totalHeldSessions,
+        presentCount,
+        excusedCount,
+        attendedOrExcusedCount,
+        attendanceRate,
+        thresholdPercent,
+        isEligible,
+        eligibilityStatus,
+        warningTier,
+        warningMessage,
+      };
+    });
   }
 
   /**

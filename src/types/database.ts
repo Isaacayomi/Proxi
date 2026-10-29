@@ -1,11 +1,12 @@
 export type UserRole = "student" | "lecturer";
 
-export type SessionStatus = "active" | "ended" | "expired";
+export type SessionStatus = "active" | "ended" | "expired" | "cancelled";
 
-export type AttendanceStatus = "present" | "rejected";
+export type AttendanceStatus = "present" | "excused" | "rejected";
 
 export type AuditOutcome =
   | "verified_present"
+  | "verified_excused"
   | "rejected_geofence"
   | "rejected_accuracy"
   | "rejected_expired"
@@ -128,4 +129,64 @@ export interface VerificationResult {
   accuracy_meters?: number;
   required_accuracy_meters?: number;
   submitted_at?: string;
+}
+
+export type ExamEligibilityStatus = "ELIGIBLE" | "NOT ELIGIBLE";
+
+export type EligibilityWarningTier = "safe" | "warning" | "ineligible";
+
+export interface StudentEligibility {
+  studentId: string;
+  matricNumber: string;
+  studentName: string;
+  studentEmail: string;
+  totalHeldSessions: number;
+  presentCount: number;
+  excusedCount: number;
+  attendedOrExcusedCount: number;
+  attendanceRate: number;
+  isEligible: boolean;
+  eligibilityStatus: ExamEligibilityStatus;
+  warningTier: EligibilityWarningTier;
+  warningMessage?: string;
+}
+
+export interface StudentCourseEligibilitySummary {
+  courseId: string;
+  courseCode: string;
+  courseName: string;
+  department: string;
+  totalHeldSessions: number;
+  presentCount: number;
+  excusedCount: number;
+  attendedOrExcusedCount: number;
+  attendanceRate: number;
+  thresholdPercent: number;
+  isEligible: boolean;
+  eligibilityStatus: ExamEligibilityStatus;
+  warningTier: EligibilityWarningTier;
+  warningMessage: string;
+}
+
+export interface CourseEligibilityReport {
+  courseId: string;
+  courseCode: string;
+  courseName: string;
+  department: string;
+  lecturerId: string;
+  lecturerName: string;
+  lecturerEmail: string;
+  generatedAt: string;
+  dateRange: {
+    from: string | null;
+    to: string | null;
+  };
+  thresholdPercent: number;
+  totalHeldSessions: number;
+  totalCancelledSessions: number;
+  totalEnrolled: number;
+  totalEligible: number;
+  totalNotEligible: number;
+  overallEligibilityRate: number;
+  students: StudentEligibility[];
 }
