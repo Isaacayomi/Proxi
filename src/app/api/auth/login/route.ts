@@ -94,10 +94,19 @@ export async function POST(req: NextRequest) {
           updated_at: new Date().toISOString(),
         };
 
-        try {
-          await supabase.from("profiles").upsert([profile]);
-        } catch {
-          // ignore
+        const { error: upsertErr } = await supabase.from("profiles").upsert([profile]);
+        if (upsertErr) {
+          await supabase.from("profiles").upsert([
+            {
+              id: profile.id,
+              email: profile.email,
+              first_name: profile.first_name,
+              last_name: profile.last_name,
+              matric_number: profile.matric_number,
+              role: profile.role,
+              updated_at: new Date().toISOString(),
+            },
+          ]);
         }
       }
 

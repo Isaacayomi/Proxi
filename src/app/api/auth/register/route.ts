@@ -296,11 +296,39 @@ export async function POST(req: NextRequest) {
         updated_at: new Date().toISOString(),
       };
 
-      const { data: dbProfile, error: profileError } = await supabase
+      let { data: dbProfile, error: profileError } = await supabase
         .from("profiles")
         .upsert([profilePayload])
         .select()
         .single();
+
+      // If full schema upsert fails (e.g. device_id/staff_id columns not yet in DB schema),
+      // retry with base schema columns so the profile record is GUARANTEED to exist in public.profiles.
+      if (profileError || !dbProfile) {
+        const basePayload: any = {
+          id: userId,
+          email: cleanEmail,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          matric_number: cleanMatric,
+          role: cleanRole,
+          updated_at: new Date().toISOString(),
+        };
+
+        const { data: retryProfile, error: retryErr } = await supabase
+          .from("profiles")
+          .upsert([basePayload])
+          .select()
+          .single();
+
+        if (!retryErr && retryProfile) {
+          dbProfile = {
+            ...retryProfile,
+            ...profilePayload,
+          };
+          profileError = null;
+        }
+      }
 
       if (profileError || !dbProfile) {
         profile = {
