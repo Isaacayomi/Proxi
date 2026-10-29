@@ -48,6 +48,9 @@ npm-debug.log
 yarn-error.log
 pnpm-debug.log
 
+# Scratch scripts
+scratch/
+
 # Testing coverage
 /coverage
 

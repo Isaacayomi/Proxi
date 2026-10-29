@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProxiCheck - Technical Project Report</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+    :root {
+      --primary: #0f172a;
+      --accent: #059669;
+      --accent-light: #ecfdf5;
+      --border: #e2e8f0;
+      --text: #334155;
+      --text-dark: #0f172a;
+      --text-muted: #64748b;
+      --bg-page: #f8fafc;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text);
+      background-color: var(--bg-page);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .container {
+      max-width: 850px;
+      margin: 30px auto;
+      background: #ffffff;
+      padding: 50px 60px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+      border: 1px solid var(--border);
+    }
+
+    /* Print action bar */
+    .action-bar {
+      position: sticky;
+      top: 20px;
+      z-index: 100;
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: -40px;
+      pointer-events: none;
+    }
+
+    .btn-download {
+      pointer-events: auto;
+      background: #059669;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+      transition: all 0.2s ease;
+    }
+
+    .btn-download:hover {
+      background: #047857;
+      transform: translateY(-1px);
+    }
+
+    /* Header & Branding */
+    header {
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+    }
+
+    .badge-pill {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background-color: var(--accent-light);
+      color: var(--accent);
+      border: 1px solid #a7f3d0;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--text-dark);
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .metadata-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      font-size: 12px;
+      color: var(--text-muted);
+      padding-top: 12px;
+      border-top: 1px dashed var(--border);
+    }
+
+    .metadata-item strong {
+      color: var(--text-dark);
+    }
+
+    /* Section Typography */
+    h2 {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text-dark);
+      margin-top: 36px;
+      margin-bottom: 14px;
+      padding-bottom: 6px;
+      border-bottom: 1.5px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f766e;
+      margin-top: 20px;
+      margin-bottom: 8px;
+    }
+
+    p {
+      margin-bottom: 12px;
+      text-align: justify;
+    }
+
+    ul, ol {
+      margin-left: 20px;
+      margin-bottom: 16px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    li strong {
+      color: var(--text-dark);
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0;
+      font-size: 12.5px;
+    }
+
+    th, td {
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background-color: #f1f5f9;
+      color: var(--text-dark);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+    }
+
+    tr:nth-child(even) td {
+      background-color: #f8fafc;
+    }
+
+    /* Highlights & Callouts */
+    .callout {
+      background-color: #f8fafc;
+      border-left: 4px solid var(--accent);
+      padding: 14px 18px;
+      border-radius: 0 8px 8px 0;
+      margin: 18px 0;
+      font-size: 13px;
+    }
+
+    .code-box {
+      font-family: 'JetBrains Mono', monospace;
+      background-color: #0f172a;
+      color: #e2e8f0;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      overflow-x: auto;
+      margin: 16px 0;
+      line-height: 1.5;
+    }
+
+    /* Print Overrides */
+    @media print {
+      body {
+        background: #ffffff;
+        font-size: 12px;
+      }
+      .container {
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+        box-shadow: none;
+        border: none;
+      }
+      .action-bar {
+        display: none !important;
+      }
+      h2 {
+        margin-top: 24px;
+        page-break-after: avoid;
+      }
+      table, .callout, .code-box {
+        page-break-inside: avoid;
+      }
+      @page {
+        margin: 20mm 15mm;
+        size: A4;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="action-bar">
+    <button class="btn-download" onclick="window.print()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download / Print as PDF
+    </button>
+  </div>
+
+  <div class="container">
+    <header>
+      <span class="badge-pill">SWEP Technical Documentation</span>
+      <h1>ProxiCheck: Intelligent University Attendance System</h1>
+      <div class="subtitle">Next-Generation Browser-Geofenced Attendance & Academic Roll-Call Platform</div>
+      
+      <div class="metadata-bar">
+        <div class="metadata-item"><strong>Institution:</strong> Obafemi Awolowo University (OAU)</div>
+        <div class="metadata-item"><strong>Department:</strong> Computer Science & Engineering</div>
+        <div class="metadata-item"><strong>Course:</strong> Software Engineering Practice (SWEP)</div>
+        <div class="metadata-item"><strong>Date:</strong> October 2026</div>
+      </div>
+    </header>
+
+    <!-- SECTION 1 -->
+    <h2>1. Project Overview & Problem Statement</h2>
+    <h3>1.1 What ProxiCheck Does</h3>
+    <p>
+      <strong>ProxiCheck</strong> is a hardware-free, browser-native university attendance management platform. It enables lecturers to initiate cryptographically verified roll-call geofences centered around lecture rooms and allows registered students to record attendance within seconds directly through standard desktop, tablet, or mobile web browsers.
+    </p>
+
+    <h3>1.2 The Problem It Solves</h3>
+    <p>Traditional university roll call and attendance recording methods suffer from critical structural weaknesses:</p>
+    <ul>
+      <li><strong>Paper Attendance Sheets:</strong> Heavily prone to proxy sign-ins (students signing on behalf of absent friends), illegible handwriting, damaged sheets, and significant class disruption while passing papers across large lecture halls.</li>
+      <li><strong>Dedicated Biometric Terminals:</strong> Fingerprint and facial terminals are cost-prohibitive to install across every classroom, experience frequent hardware breakdowns, and cause massive queues at hall entrances.</li>
+      <li><strong>Static QR Code Systems:</strong> Severely compromised because students in the lecture hall snap screenshots of projected QR codes and send them across WhatsApp or Telegram groups for absent students to scan from their rooms.</li>
+      <li><strong>Native Mobile Apps & Beacons:</strong> Compelling students to download 80MB+ native mobile application store packages creates compatibility and phone storage barriers, while Bluetooth beacon radio signals unpredictably leak through concrete walls into external hallways.</li>
+    </ul>
+    <p>
+      ProxiCheck eliminates both physical hardware and mobile app installations by utilizing browser geolocation, server-side geospatial verification, single-device fingerprint binding, and institutional email validation.
+    </p>
+
+    <!-- SECTION 2 -->
+    <h2>2. Attendance Process & Verification Mechanics</h2>
+    <h3>2.1 Step-by-Step Attendance Workflow</h3>
+    <ol>
+      <li><strong>Session Initiation:</strong> The lecturer logs into the Faculty Command Center, selects a course, chooses a registered classroom venue (e.g., Step B), sets an allowed radius (10m to 500m), and designates a duration (30 to 120 minutes).</li>
+      <li><strong>Dynamic GPS Anchoring:</strong> The session automatically anchors to the calibrated coordinates of the venue, or dynamically anchors to the lecturer's live device coordinates if the lecture was relocated.</li>
+      <li><strong>Session Discovery:</strong> The active session immediately displays on the student dashboard for all students officially registered in that course.</li>
+      <li><strong>Presence Submission:</strong> The student taps "Check In". The browser requests high-precision satellite coordinates via the HTML5 Geolocation interface.</li>
+      <li><strong>Multi-Layer Verification:</strong> The server verifies device integrity, rejects coarse network signals, computes the geodesic distance to the hall center, and commits an atomic database transaction.</li>
+      <li><strong>Live Feedback & Audit:</strong> The student receives instantaneous confirmation with distance and timestamp, while the lecturer's live attendee radar updates in real time with the student's matric number and check-in time.</li>
+    </ol>
+
+    <h3>2.2 Presence Verification Logic</h3>
+    <p>The verification pipeline validates four sequential criteria without requiring manual calculations:</p>
+    <ul>
+      <li><strong>Single-Device Integrity:</strong> The student's account must match the physical device hardware fingerprint bound upon registration. This ensures a student physically in class cannot log in on behalf of an absent friend.</li>
+      <li><strong>Sensor Accuracy Filtering:</strong> The device's reported GPS horizontal accuracy radius must be within acceptable thresholds (under 50 meters), filtering out inaccurate cell-tower or Wi-Fi triangulations.</li>
+      <li><strong>Geodesic Distance Verification:</strong> The server computes the true shortest surface distance between the student's coordinates and the lecture hall center using the Great-Circle navigation algorithm. The student must physically be within the lecturer's configured perimeter.</li>
+      <li><strong>Atomic Concurrency Lock:</strong> A composite unique database constraint on session ID and student ID guarantees that duplicate check-ins are blocked atomically.</li>
+    </ul>
+
+    <!-- SECTION 3 -->
+    <h2>3. Technologies Used</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Layer</th>
+          <th>Technology</th>
+          <th>Role & Responsibility</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Frontend Framework</strong></td>
+          <td>Next.js 15.2 (App Router)</td>
+          <td>Server & Client Components, dynamic routing, and API route handlers.</td>
+        </tr>
+        <tr>
+          <td><strong>UI & Interactivity</strong></td>
+          <td>React 19 & Tailwind CSS</td>
+          <td>Reactive live state, mobile-first responsive layout, and Sora typography tokens.</td>
+        </tr>
+        <tr>
+          <td><strong>Language</strong></td>
+          <td>TypeScript 5.8 (Strict)</td>
+          <td>Strict end-to-end type safety across API contracts and database models.</td>
+        </tr>
+        <tr>
+          <td><strong>Database & Auth</strong></td>
+          <td>Supabase (PostgreSQL 15+)</td>
+          <td>Relational database, Row-Level Security (RLS) policies, and GoTrue authentication.</td>
+        </tr>
+        <tr>
+          <td><strong>Local Fallback Store</strong></td>
+          <td>In-Memory Store (ES6 Maps)</td>
+          <td>Integrated offline operational database store for local testing and resilience.</td>
+        </tr>
+        <tr>
+          <td><strong>Testing Suite</strong></td>
+          <td>Vitest 3 & Testing Library</td>
+          <td>Automated unit and integration test suite covering math, roles, and UI primitives.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- SECTION 4 -->
+    <h2>4. Features: Implemented vs. In-Progress</h2>
+    <h3>4.1 Implemented Features</h3>
+    <ul>
+      <li><strong>Browser-Native Geofencing:</strong> Zero app store downloads; students check in directly via browser geolocation.</li>
+      <li><strong>Single-Device Hardware Binding:</strong> Enforces 1 device per student matriculation number to prevent proxy logins.</li>
+      <li><strong>Faculty Verification Keys:</strong> Pre-provisioned departmental authorization keys prevent student spoofing of lecturer roles.</li>
+      <li><strong>Institutional Email Governance:</strong> Strict regex validation requiring students to use OAU student emails and staff to use faculty emails.</li>
+      <li><strong>Venue & Course Management:</strong> Full administrative management for lecture theatres and departmental allocations.</li>
+      <li><strong>Live Attendance Radar & CSV Export:</strong> Real-time polling monitor and one-click formatted CSV sheet export for academic portals.</li>
+      <li><strong>Individual Course Enrollment:</strong> Students can only access roll calls for courses they are officially registered for.</li>
+    </ul>
+
+    <h3>4.2 Exam Eligibility & At-Risk Predictor Feature</h3>
+    <p>
+      To enforce academic regulations requiring at least 75% lecture attendance to qualify for semester examinations, ProxiCheck includes an attendance forecasting engine:
+    </p>
+    <ul>
+      <li><strong>Dynamic Attendance Projection:</strong> Calculates the student's maximum attainable attendance percentage by summing attended classes with all remaining scheduled classes, divided by total syllabus lectures.</li>
+      <li><strong>Automated Risk Badging:</strong> Automatically categorizes students as <strong>Safe</strong> (&ge; 75%), <strong>At Risk</strong> (60% to 74% with targeted attendance targets), or <strong>Barred</strong> (&lt; 60% or mathematically unable to reach 75%).</li>
+      <li><strong>Official Examination Docket:</strong> Provides lecturers and examination officers with a one-click summary of barred students for faculty board review.</li>
+    </ul>
+
+    <!-- SECTION 5 -->
+    <h2>5. System Architecture & Database Design</h2>
+    <p>ProxiCheck employs a 3-tier cloud architecture separating presentation, business logic, and relational persistence:</p>
+    <ul>
+      <li><strong>Presentation Tier:</strong> Responsive Next.js 15 client handling location capture, active roll-call displays, and real-time radar monitors.</li>
+      <li><strong>Application Tier:</strong> Serverless Edge route handlers validating JWT session cookies, running geospatial checks, and managing session lifecycles.</li>
+      <li><strong>Data Tier:</strong> Supabase PostgreSQL relational schema enforcing unique constraints, foreign keys, and Row-Level Security policies.</li>
+    </ul>
+
+    <h3>Database Schema Entities</h3>
+    <ul>
+      <li><code>profiles</code>: Stores user identity, university email, role (student/lecturer/admin), matric number, and bound device fingerprint.</li>
+      <li><code>classrooms</code>: Physical campus venues with latitude, longitude, and default radius.</li>
+      <li><code>courses</code>: Academic courses with departmental code and course title.</li>
+      <li><code>course_enrollments</code>: Junction table linking students to registered courses.</li>
+      <li><code>attendance_sessions</code>: Active or historical roll calls with geofence center, radius, and duration windows.</li>
+      <li><code>attendance_records</code>: Verified check-ins storing session ID, student ID, matric number, recorded distance, and submission timestamp.</li>
+    </ul>
+
+    <!-- SECTION 6 -->
+    <h2>6. Development Process & Major Challenges</h2>
+    <h3>6.1 Engineering Heritage & Pivot</h3>
+    <p>
+      The project originally began as an ESP32 microcontroller Bluetooth Low Energy (BLE) beacon prototype paired with an Expo React Native mobile application. Field testing revealed critical drawbacks: BLE signal strength through thick university walls was erratic (causing students in outside corridors to register false check-ins), and distributing native mobile applications caused installation friction across different operating systems. The team pivoted to a browser-based geospatial architecture, eliminating hardware dependencies while hardening web security.
+    </p>
+
+    <h3>6.2 Key Challenges & Solutions</h3>
+    <ul>
+      <li><strong>Indoor GPS Signal Distortion:</strong> Concrete auditoriums can degrade satellite accuracy. Solved by implementing an adaptive sensor accuracy filter and a Live Location Override enabling lecturers to anchor the geofence from their active podium position.</li>
+      <li><strong>Buddy Check-in Prevention:</strong> Students sharing login credentials with friends in class. Solved by binding user accounts to a unique browser hardware device fingerprint upon registration.</li>
+      <li><strong>Database Schema Desynchronization:</strong> Cloud migrations missing columns during initial account creation. Solved by implementing resilient fallback upsert patterns that guarantee profile persistence before session initialization.</li>
+    </ul>
+
+    <!-- SECTION 7 -->
+    <h2>7. Testing Performed, Actual Results & Limitations</h2>
+    <h3>7.1 Automated Testing Suite (Vitest 3)</h3>
+    <div class="code-box">
+$ npm test
+✓ tests/attendance.test.ts (7 tests)
+✓ tests/geo.test.ts        (9 tests)
+✓ tests/middleware.test.ts (10 tests)
+✓ tests/roles.test.ts      (16 tests)
+✓ tests/components.test.tsx(8 tests)
+
+Test Files  5 passed (5)
+Tests       50 passed (50)
+Duration    3.25s
+    </div>
+    <ul>
+      <li><strong>Geospatial Distance Suite (9 tests):</strong> Validated against campus coordinate benchmarks. Verified boundary conditions including zero offset, inside perimeter, boundary edges, and outside limits.</li>
+      <li><strong>Attendance Engine Suite (7 tests):</strong> Verified atomic check-ins, active session time windows, accuracy rejection for coarse signals, and duplicate attempt prevention.</li>
+      <li><strong>Role & Email Governance (16 tests):</strong> Verified strict OAU student matriculation structure and staff email formatting.</li>
+      <li><strong>Route Protection Middleware (10 tests):</strong> Tested role-based redirection, cookie session extraction, and unauthorized route guards.</li>
+      <li><strong>UI Components Suite (8 tests):</strong> Verified rendering states, loading spinners, and interactive dialogs.</li>
+    </ul>
+
+    <h3>7.2 System Limitations</h3>
+    <ul>
+      <li><strong>Browser Permissions:</strong> Location permission is required by the browser; users who deny permission cannot record presence.</li>
+      <li><strong>Basement Laboratories:</strong> Underground halls without satellite line-of-sight require lecturers to expand radius presets.</li>
+    </ul>
+
+    <!-- SECTION 8 -->
+    <h2>8. Documentation & References</h2>
+    <ul>
+      <li><strong>Project Inspiration:</strong> Derived architectural paradigms from open-source mobile BLE attendance prototypes, replacing the fragile radio layer with web geospatial technology.</li>
+      <li><strong>README Documentation:</strong> Comprehensive operational runbook located at <code>README.md</code>.</li>
+      <li><strong>Deployment Manual:</strong> Step-by-step production setup and environment variable configuration located at <code>docs/DEPLOYMENT.md</code>.</li>
+      <li><strong>Database Migrations:</strong> Versioned SQL migration scripts defining tables, triggers, and security policies located at <code>supabase/migrations/</code>.</li>
+    </ul>
+  </div>
+
+</body>
+</html>
+
