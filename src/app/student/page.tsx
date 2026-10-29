@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth/auth-context";
 import { AttendanceSession, Course } from "@/types/database";
 import { CheckInCard } from "@/components/student/check-in-card";
+import { StudentEligibilityTracker } from "@/components/student/student-eligibility-card";
 import { useToast } from "@/components/ui/toast";
 import {
   Card,
@@ -251,6 +252,13 @@ export default function StudentDashboardPage() {
           </div>
         )}
       </section>
+
+      {/* 75% Attendance & Examination Eligibility Tracker */}
+      {studentId && (
+        <section>
+          <StudentEligibilityTracker studentId={studentId} />
+        </section>
+      )}
 
       {/* Course Enrollment & Curriculum Section */}
       <section className="space-y-4">

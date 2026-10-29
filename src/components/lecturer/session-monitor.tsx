@@ -30,6 +30,8 @@ import {
   CheckCircle2,
   Radio,
   Navigation,
+  Ban,
+  ShieldCheck,
 } from "lucide-react";
 
 interface SessionMonitorProps {
@@ -49,7 +51,10 @@ export function SessionMonitor({
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isCancelOpen, setIsCancelOpen] = useState(false);
+  const [isOverridingStudentId, setIsOverridingStudentId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchRecords = useCallback(async () => {
@@ -104,6 +109,55 @@ export function SessionMonitor({
       setError(err instanceof Error ? err.message : "Failed to close session.");
     } finally {
       setIsEnding(false);
+    }
+  };
+
+  const handleConfirmCancelSession = async () => {
+    setIsCancelling(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/attendance/sessions/${session.id}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lecturerId }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to cancel session");
+      }
+
+      setIsCancelOpen(false);
+      onSessionEnded();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to cancel session.");
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const handleToggleExcuse = async (studentId: string, currentStatus: string) => {
+    setIsOverridingStudentId(studentId);
+    try {
+      const newStatus = currentStatus === "excused" ? "present" : "excused";
+      const res = await fetch("/api/attendance/override", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: session.id,
+          studentId,
+          status: newStatus,
+          lecturerId,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        await fetchRecords();
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsOverridingStudentId(null);
     }
   };
 
@@ -188,6 +242,19 @@ export function SessionMonitor({
                 <Download className="w-3.5 h-3.5" />
                 Export CSV ({records.length})
               </Button>
+              {session.status !== "cancelled" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-amber-700 hover:text-amber-800 border-amber-300 hover:bg-amber-50"
+                  onClick={() => setIsCancelOpen(true)}
+                  isLoading={isCancelling}
+                  title="Cancel class so it does not penalize students"
+                >
+                  <Ban className="w-3.5 h-3.5" />
+                  Cancel Class
+                </Button>
+              )}
               {isLive && (
                 <Button
                   variant="danger"
@@ -303,6 +370,7 @@ export function SessionMonitor({
                   <th className="px-6 py-3.5">Verified Distance</th>
                   <th className="px-6 py-3.5">GPS Precision</th>
                   <th className="px-6 py-3.5">Status</th>
+                  <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -331,9 +399,32 @@ export function SessionMonitor({
                         : "N/A"}
                     </td>
                     <td className="px-6 py-4">
-                      <Badge variant="success" size="sm">
-                        Verified Present
-                      </Badge>
+                      {rec.status === "excused" ? (
+                        <Badge variant="warning" size="sm" className="bg-amber-50 text-amber-800 border-amber-300">
+                          Excused Absence
+                        </Badge>
+                      ) : rec.status === "present" ? (
+                        <Badge variant="success" size="sm">
+                          Verified Present
+                        </Badge>
+                      ) : (
+                        <Badge variant="error" size="sm">
+                          {rec.status}
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleToggleExcuse(rec.student_id, rec.status)}
+                        isLoading={isOverridingStudentId === rec.student_id}
+                        className="text-xs text-slate-600 hover:text-proxi-ink"
+                        title="Pardon or excuse absence for this lecture"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                        {rec.status === "excused" ? "Revoke Pardon" : "Excuse Absence"}
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -354,6 +445,19 @@ export function SessionMonitor({
         cancelText="Keep Session Active"
         variant="danger"
         isLoading={isEnding}
+      />
+
+      {/* Confirmation Modal to Cancel Class */}
+      <ConfirmModal
+        isOpen={isCancelOpen}
+        onClose={() => setIsCancelOpen(false)}
+        onConfirm={handleConfirmCancelSession}
+        title="Cancel This Class Session?"
+        description={`Are you sure you want to mark this class session as Cancelled? Cancelled classes are completely excluded from held session counts and will not hurt students' 75% attendance examination eligibility.`}
+        confirmText="Yes, Cancel Class"
+        cancelText="Keep Class"
+        variant="danger"
+        isLoading={isCancelling}
       />
     </div>
   );

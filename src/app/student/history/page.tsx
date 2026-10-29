@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { db } from "@/lib/db/store";
 import { AttendanceRecord } from "@/types/database";
 import { HistoryTable } from "@/components/student/history-table";
+import { StudentEligibilityTracker } from "@/components/student/student-eligibility-card";
 
 export default function StudentHistoryPage() {
   const { user } = useAuth();
@@ -44,6 +45,12 @@ export default function StudentHistoryPage() {
           university courses.
         </p>
       </div>
+
+      {studentId && (
+        <section className="mb-6">
+          <StudentEligibilityTracker studentId={studentId} />
+        </section>
+      )}
 
       {loading ? (
         <div className="py-12 text-center text-xs text-proxi-muted">Loading attendance records...</div>
